@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "536966046543",
+    "project_id": "farm-management-de6d9",
+    "storage_bucket": "farm-management-de6d9.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:536966046543:android:003871189c84849f2a1b3a",
+        "android_client_info": {
+          "package_name": "com.example.flutter_login_template"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDbaYD9c8ZZDxxybNM0NsIMXUqu2E5egJA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
