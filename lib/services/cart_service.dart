@@ -10,6 +10,7 @@ class CartService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
   // 사용자 장바구니 가져오기
+// 예시: cart_service.dart 또는 cart_controller.dart에서 수정
   Future<List<CartItemModel>> getUserCart(String userId) async {
     try {
       QuerySnapshot snapshot = await _firestore
@@ -19,7 +20,10 @@ class CartService {
           .orderBy('addedAt', descending: true)
           .get();
 
+      // 오류 방지를 위한 안전한 변환
       return snapshot.docs
+          .where(
+              (doc) => doc.exists && doc.data() != null) // 존재하고 데이터가 있는 문서만 필터링
           .map((doc) => CartItemModel.fromFirestore(doc))
           .toList();
     } catch (e) {

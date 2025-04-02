@@ -95,9 +95,9 @@ class AppBottomNavBar extends StatelessWidget {
           label: '카테고리',
         ),
         BottomNavItem(
-          icon: Icons.favorite_outline,
-          activeIcon: Icons.favorite,
-          label: '찜',
+          icon: Icons.shopping_cart_outlined,
+          activeIcon: Icons.shopping_cart,
+          label: '장바구니',
         ),
         BottomNavItem(
           icon: Icons.person_outline,

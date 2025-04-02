@@ -45,6 +45,10 @@
 
 ## git 업로드 방법
     ```bash
+    rm -rf .git  <완전초기화시사용>
+
+    git init 
+
     git add .
 
     git commit -m "버전 1.0.0 추가"

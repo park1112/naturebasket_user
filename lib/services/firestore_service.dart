@@ -223,18 +223,19 @@ class FirestoreService {
     }
   }
 
+// 예시: user_service.dart 또는 user_controller.dart에서 수정
   Future<UserModel?> getUser(String uid) async {
     try {
-      final doc = await _firestore
-          .collection(AppConstants.usersCollection)
-          .doc(uid)
-          .get();
-      if (doc.exists) {
+      DocumentSnapshot doc =
+          await _firestore.collection('users').doc(uid).get();
+
+      if (doc.exists && doc.data() != null) {
+        // 문서 존재 및 데이터 확인
         return UserModel.fromFirestore(doc);
       }
       return null;
     } catch (e) {
-      print('Get user error: $e');
+      print('Error getting user data: $e');
       return null;
     }
   }

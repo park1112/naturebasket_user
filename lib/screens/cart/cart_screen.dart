@@ -1,5 +1,6 @@
 // lib/screens/cart/cart_screen.dart
 import 'package:flutter/material.dart';
+import 'package:flutter_login_template/controllers/cart_controller.dart';
 import 'package:get/get.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../../config/theme.dart';
@@ -182,14 +183,78 @@ class _CartScreenState extends State<CartScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final CartController cartController = Get.find<CartController>();
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('장바구니'),
       ),
-      body: _isLoading
-          ? const Center(child: CustomLoading())
-          : _buildCartContent(),
-      bottomNavigationBar: _buildBottomBar(),
+      body: Obx(() {
+        // 로딩 중일 경우 스피너 표시
+        if (cartController.isLoading.value) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        // 장바구니가 비어있으면 예외 처리 화면 (메시지 및 재시도 버튼 제공)
+        else if (cartController.cartItems.isEmpty) {
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Text(
+                  "장바구니가 비어 있습니다.",
+                  style: TextStyle(fontSize: 18),
+                ),
+                const SizedBox(height: 20),
+                ElevatedButton(
+                  onPressed: () {
+                    // 카트 다시 로드 시도
+                    cartController.loadCart();
+                  },
+                  child: const Text("다시 불러오기"),
+                ),
+              ],
+            ),
+          );
+        }
+        // 장바구니에 항목이 있을 경우 목록 표시
+        else {
+          return ListView.builder(
+            itemCount: cartController.cartItems.length,
+            itemBuilder: (context, index) {
+              final item = cartController.cartItems[index];
+              return Card(
+                margin: const EdgeInsets.all(8),
+                child: ListTile(
+                  leading:
+                      item.productImage != null && item.productImage!.isNotEmpty
+                          ? Image.network(
+                              item.productImage!,
+                              width: 50,
+                              height: 50,
+                              fit: BoxFit.cover,
+                            )
+                          : const Icon(Icons.image_not_supported, size: 50),
+                  title: Text(item.productName),
+                  subtitle: Text("수량: ${item.quantity}"),
+                  trailing: Text(
+                      "${(item.price * item.quantity).toStringAsFixed(0)} 원"),
+                ),
+              );
+            },
+          );
+        }
+      }),
+      // 선택된 항목이 있을 때 총 금액을 보여주는 FloatingActionButton (옵션)
+      floatingActionButton: Obx(() => cartController.cartItems.isNotEmpty
+          ? FloatingActionButton.extended(
+              onPressed: () {
+                // 체크아웃 등의 액션을 여기에 구현
+              },
+              label:
+                  Text("총액: ${cartController.totalPrice.toStringAsFixed(0)} 원"),
+              icon: const Icon(Icons.payment),
+            )
+          : Container()),
     );
   }
 

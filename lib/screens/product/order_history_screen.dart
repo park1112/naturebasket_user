@@ -212,7 +212,7 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
       padding: const EdgeInsets.only(bottom: 8.0),
       child: Row(
         children: [
-          if (item.items[0].product.imageUrl != null)
+          if (item.items[0].product?.imageUrl != null) // null 체크 추가
             Container(
               width: isSmallScreen ? 40 : 60,
               height: isSmallScreen ? 40 : 60,
@@ -223,7 +223,7 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(4),
                 child: CachedNetworkImage(
-                  imageUrl: item.items[0].product.imageUrl!,
+                  imageUrl: item.items[0].product?.imageUrl ?? '',
                   fit: BoxFit.cover,
                   placeholder: (context, url) => Center(
                     child:
@@ -255,20 +255,20 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  item.items[0].product.name,
+                  item.items[0].product?.name ?? '',
                   style: const TextStyle(fontWeight: FontWeight.w500),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
                 Text(
-                  '${NumberFormat('#,###').format(item.items[0].product.sellingPrice.toInt())}원 · ${item.items[0].quantity}개',
+                  '${NumberFormat('#,###').format(item.items[0].product?.sellingPrice.toInt() ?? 0)}원 · ${item.items[0].quantity}개',
                   style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
                 ),
               ],
             ),
           ),
           Text(
-            '${NumberFormat('#,###').format(item.items[0].product.sellingPrice.toInt())}원',
+            '${NumberFormat('#,###').format(item.items[0].product?.sellingPrice.toInt() ?? 0)}원',
             style: const TextStyle(fontWeight: FontWeight.w500),
           ),
         ],

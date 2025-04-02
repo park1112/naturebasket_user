@@ -11,7 +11,7 @@ class CartItemModel {
   final int quantity;
   final Map<String, dynamic>? selectedOptions;
   final DateTime addedAt;
-  final ProductModel product;
+  final ProductModel? product; // late 제거하고 nullable로 변경
 
   CartItemModel({
     required this.id,
@@ -22,7 +22,7 @@ class CartItemModel {
     required this.quantity,
     this.selectedOptions,
     required this.addedAt,
-    required this.product,
+    this.product, // required 제거
   });
 
   // 합계 계산
@@ -41,7 +41,7 @@ class CartItemModel {
       quantity: data['quantity'] ?? 1,
       selectedOptions: data['selectedOptions'],
       addedAt: (data['addedAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
-      product: ProductModel.fromFirestore(doc),
+      product: null, // 이 부분을 수정, 나중에 필요할 때 로드하도록
     );
   }
 

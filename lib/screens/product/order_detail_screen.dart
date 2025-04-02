@@ -433,7 +433,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // 상품 이미지
-          if (item.product.imageUrl != null)
+          if (item.product?.imageUrl != null)
             Container(
               width: 80,
               height: 80,
@@ -444,7 +444,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(8),
                 child: CachedNetworkImage(
-                  imageUrl: item.product.imageUrl!,
+                  imageUrl: item.product?.imageUrl ?? '',
                   fit: BoxFit.cover,
                   placeholder: (context, url) => Center(
                     child:
@@ -477,7 +477,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  item.product.name,
+                  item.product?.name ?? '',
                   style: const TextStyle(
                     fontWeight: FontWeight.bold,
                     fontSize: 16,
@@ -500,7 +500,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
-                      '${NumberFormat('#,###').format(item.product.sellingPrice.toInt())}원',
+                      '${NumberFormat('#,###').format(item.product?.sellingPrice.toInt() ?? 0)}원',
                       style: const TextStyle(fontWeight: FontWeight.w500),
                     ),
                     Text(
@@ -514,8 +514,8 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                   width: double.infinity,
                   child: OutlinedButton(
                     onPressed: () {
-                      Get.to(() =>
-                          ProductDetailScreen(productId: item.product.id));
+                      Get.to(() => ProductDetailScreen(
+                          productId: item.product?.id ?? ''));
                     },
                     style: OutlinedButton.styleFrom(
                       side: BorderSide(color: AppTheme.primaryColor),

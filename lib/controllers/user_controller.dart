@@ -78,6 +78,22 @@ class UserController extends GetxController {
   }
 
   // 사용자 정보 다시 로드
+  Future<void> reloadUserData() async {
+    if (_authController.firebaseUser.value == null) return;
+
+    try {
+      isLoading.value = true;
+      String uid = _authController.firebaseUser.value!.uid;
+      await _reloadUserData(uid);
+    } catch (e) {
+      print('Error reloading user data: $e');
+      Get.snackbar('오류', '사용자 정보를 불러오는 중 오류가 발생했습니다.');
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
+  // 사용자 정보 다시 로드
   Future<void> _reloadUserData(String uid) async {
     try {
       UserModel? userData = await _firestoreService.getUser(uid);
