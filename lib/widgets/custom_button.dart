@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../config/theme.dart';
-import '../config/constants.dart';
 
-/// 소셜 로그인 버튼 종류
+// 소셜 로그인 버튼 종류
 enum SocialButtonType {
   naver,
   facebook,
@@ -11,85 +9,54 @@ enum SocialButtonType {
   google,
 }
 
-/// 일반 커스텀 버튼
+// 일반 커스텀 버튼
 class CustomButton extends StatelessWidget {
   final String text;
-  final VoidCallback? onPressed; // 비활성화 지원을 위해 nullable
-  final Color? backgroundColor;
-  final Color? textColor;
-  final double? width;
-  final double height; // 기본 높이
-  final double fontSize; // 기본 폰트 크기
-  final bool isLoading; // 로딩 상태
-  final Widget? leadingIcon; // 아이콘 (선택 사항)
-  final EdgeInsetsGeometry padding; // 패딩
-  final double borderRadius; // 테두리 반경
-  final bool isOutlined; // 아웃라인 버튼 여부
+  final VoidCallback onPressed;
+  final Color backgroundColor;
+  final Color textColor;
+  final double height;
+  final bool isOutlined;
+  final IconData? icon;
+  final bool isLoading;
 
   const CustomButton({
-    Key? key,
+    super.key,
     required this.text,
     required this.onPressed,
-    this.backgroundColor,
-    this.textColor,
-    this.width,
+    this.backgroundColor = AppTheme.primaryColor,
+    this.textColor = Colors.white,
     this.height = 50.0,
-    this.fontSize = 16.0,
-    this.isLoading = false,
-    this.leadingIcon,
-    this.padding = const EdgeInsets.symmetric(vertical: 12.0, horizontal: 16.0),
-    this.borderRadius = 8.0,
     this.isOutlined = false,
-  }) : super(key: key);
+    this.icon,
+    this.isLoading = false,
+  });
 
   @override
   Widget build(BuildContext context) {
-    // 반응형 크기 적용 (ScreenUtil 사용 시)
-    final double btnHeight = height; // height.h 사용 가능
-    final double btnWidth = width ?? double.infinity;
-    final Color effectiveBgColor = backgroundColor ?? AppTheme.primaryColor;
-    final Color effectiveTextColor = textColor ?? Colors.white;
-
-    final ButtonStyle style = isOutlined
-        ? OutlinedButton.styleFrom(
-            side: BorderSide(color: effectiveBgColor),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(borderRadius.r),
-            ),
-            padding: padding,
-            textStyle: TextStyle(
-              fontSize: fontSize,
-              fontWeight: FontWeight.bold,
-            ),
-            disabledBackgroundColor: effectiveBgColor.withOpacity(0.5),
-            disabledForegroundColor: effectiveTextColor.withOpacity(0.7),
-          )
-        : ElevatedButton.styleFrom(
-            backgroundColor: effectiveBgColor,
-            foregroundColor: effectiveTextColor,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(borderRadius.r),
-            ),
-            padding: padding,
-            elevation: 2,
-            textStyle: TextStyle(
-              fontSize: fontSize,
-              fontWeight: FontWeight.bold,
-            ),
-          );
-
     return SizedBox(
-      width: btnWidth,
-      height: btnHeight,
+      height: height,
+      width: double.infinity,
       child: isOutlined
           ? OutlinedButton(
               onPressed: isLoading ? null : onPressed,
-              style: style,
+              style: OutlinedButton.styleFrom(
+                side: BorderSide(color: backgroundColor),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
               child: _buildButtonContent(),
             )
           : ElevatedButton(
               onPressed: isLoading ? null : onPressed,
-              style: style,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: backgroundColor,
+                foregroundColor: textColor,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
               child: _buildButtonContent(),
             ),
     );
@@ -98,112 +65,111 @@ class CustomButton extends StatelessWidget {
   Widget _buildButtonContent() {
     if (isLoading) {
       return SizedBox(
-        width: 20,
-        height: 20,
+        height: 24,
+        width: 24,
         child: CircularProgressIndicator(
-          strokeWidth: 2.0,
+          strokeWidth: 2,
           valueColor: AlwaysStoppedAnimation<Color>(
-            isOutlined
-                ? (backgroundColor ?? AppTheme.primaryColor)
-                : (textColor ?? Colors.white),
+            isOutlined ? backgroundColor : textColor,
           ),
         ),
       );
     }
-    if (leadingIcon != null) {
+
+    if (icon != null) {
       return Row(
-        mainAxisSize: MainAxisSize.min,
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          leadingIcon!,
-          const SizedBox(width: 8.0),
+          Icon(icon, size: 20),
+          const SizedBox(width: 10),
           Text(
             text,
             style: TextStyle(
-              fontSize: fontSize,
+              fontSize: 16,
               fontWeight: FontWeight.bold,
-              color: isOutlined
-                  ? (backgroundColor ?? AppTheme.primaryColor)
-                  : (textColor ?? Colors.white),
+              color: isOutlined ? backgroundColor : textColor,
             ),
           ),
         ],
       );
     }
+
     return Text(
       text,
       style: TextStyle(
-        fontSize: fontSize,
+        fontSize: 16,
         fontWeight: FontWeight.bold,
-        color: isOutlined
-            ? (backgroundColor ?? AppTheme.primaryColor)
-            : (textColor ?? Colors.white),
+        color: isOutlined ? backgroundColor : textColor,
       ),
     );
   }
 }
 
-/// 소셜 로그인 버튼
+// 소셜 로그인 버튼
+// lib/widgets/custom_button.dart
 class SocialLoginButton extends StatelessWidget {
   final SocialButtonType type;
   final VoidCallback onPressed;
   final bool isLoading;
 
   const SocialLoginButton({
-    Key? key,
+    super.key,
     required this.type,
     required this.onPressed,
     this.isLoading = false,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
-    return LayoutBuilder(builder: (context, constraints) {
-      bool isSmallScreen = constraints.maxWidth < 600;
-      return Container(
-        height: isSmallScreen ? 50 : 56,
-        margin: const EdgeInsets.symmetric(vertical: 8),
-        width: double.infinity,
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 400),
-          child: ElevatedButton(
-            onPressed: isLoading ? null : onPressed,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: _getButtonColor(),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        bool isSmallScreen = constraints.maxWidth < 600;
+
+        return Container(
+          height: isSmallScreen ? 50 : 56,
+          margin: const EdgeInsets.symmetric(vertical: 8),
+          width: double.infinity,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 400),
+            child: ElevatedButton(
+              onPressed: isLoading ? null : onPressed,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: _getButtonColor(),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
               ),
-            ),
-            child: isLoading
-                ? const SizedBox(
-                    height: 24,
-                    width: 24,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                    ),
-                  )
-                : Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      _getButtonIcon(),
-                      const SizedBox(width: 10),
-                      Text(
-                        _getButtonText(),
-                        style: TextStyle(
-                          color: type == SocialButtonType.google
-                              ? Colors.black
-                              : Colors.white,
-                          fontSize: isSmallScreen ? 16 : 18,
-                          fontWeight: FontWeight.bold,
-                        ),
+              child: isLoading
+                  ? const SizedBox(
+                      height: 24,
+                      width: 24,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                       ),
-                    ],
-                  ),
+                    )
+                  : Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        _getButtonIcon(),
+                        const SizedBox(width: 10),
+                        Text(
+                          _getButtonText(),
+                          style: TextStyle(
+                            color: type == SocialButtonType.google
+                                ? Colors.black
+                                : Colors.white,
+                            fontSize: isSmallScreen ? 16 : 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+            ),
           ),
-        ),
-      );
-    });
+        );
+      },
+    );
   }
 
   Color _getButtonColor() {
@@ -215,7 +181,7 @@ class SocialLoginButton extends StatelessWidget {
       case SocialButtonType.phone:
         return Colors.grey.shade800;
       case SocialButtonType.google:
-        return Colors.white;
+        return Colors.white; // 구글 버튼은 흰색 배경
     }
   }
 
@@ -282,6 +248,7 @@ class SocialLoginButton extends StatelessWidget {
           ),
         );
       case SocialButtonType.google:
+        // G 아이콘 (실제로는 이미지 에셋을 사용하는 것이 좋음)
         return Container(
           width: 24,
           height: 24,

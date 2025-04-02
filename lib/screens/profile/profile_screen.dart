@@ -1,4 +1,3 @@
-// lib/screens/profile/profile_screen.dart
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
@@ -19,7 +18,6 @@ class ProfileScreen extends StatefulWidget {
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
-  // AuthController 대신 UserController의 반응형 사용자 데이터를 주로 사용
   final AuthController _authController = Get.find<AuthController>();
   final UserController _userController = Get.put(UserController());
 
@@ -27,7 +25,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
 
   bool _isEditing = false;
-  bool _isLoading = false;
 
   @override
   void initState() {
@@ -35,16 +32,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
     _initUserData();
   }
 
-  // UserController의 사용자 데이터를 사용하여 초기 텍스트 설정
-  void _initUserData() async {
-    setState(() => _isLoading = true); // 로딩 상태 추가
-    try {
-      final user = _userController.user.value;
-      if (user != null && user.name != null) {
-        _nameController.text = user.name!;
-      }
-    } finally {
-      setState(() => _isLoading = false);
+  void _initUserData() {
+    final user = _authController.userModel.value;
+    if (user != null && user.name != null) {
+      _nameController.text = user.name!;
     }
   }
 
@@ -54,6 +45,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     super.dispose();
   }
 
+  // lib/screens/profile/profile_screen.dart
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -65,6 +57,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             onPressed: () {
               setState(() {
                 if (_isEditing) {
+                  // 편집 취소
                   _initUserData();
                 }
                 _isEditing = !_isEditing;
@@ -75,53 +68,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
       ),
       body: Obx(() {
         final isLoading = _userController.isLoading.value;
-        final user = _userController.user.value;
 
         if (isLoading) {
-          return const Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                CircularProgressIndicator(
-                  color: AppTheme.primaryColor,
-                ),
-                SizedBox(height: 16),
-                Text(
-                  '프로필 정보를 불러오는 중...',
-                  style: TextStyle(
-                    color: AppTheme.textSecondaryColor,
-                  ),
-                ),
-              ],
-            ),
-          );
-        }
-
-        if (user == null) {
-          return Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Text('사용자 정보를 불러올 수 없습니다.'),
-                const SizedBox(height: 20),
-                ElevatedButton.icon(
-                  onPressed: () {
-                    _userController.reloadUserData();
-                  },
-                  icon: const Icon(Icons.refresh),
-                  label: const Text("다시 불러오기"),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppTheme.primaryColor,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 24,
-                      vertical: 12,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          );
+          return const Center(child: CustomLoading());
         }
 
         return LayoutBuilder(
@@ -165,10 +114,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  // 프로필 이미지는 UserController의 user 데이터를 사용
   Widget _buildProfileImage(bool isSmallScreen) {
-    final UserModel? user = _userController.user.value;
+    final user = _authController.userModel.value;
     final selectedImage = _userController.selectedImage.value;
+
     double imageSize = isSmallScreen ? 120 : 160;
 
     return Column(
@@ -226,9 +175,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  // 프로필 정보를 출력할 때도 UserController의 user 데이터를 사용
   Widget _buildProfileInfo() {
-    final UserModel? user = _userController.user.value;
+    final user = _authController.userModel.value;
 
     if (user == null) {
       return const Center(
@@ -293,12 +241,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
     // 디버깅을 위해 실제 값 출력
     print('Original loginType: $loginType');
 
+    // 문자열 포맷 정규화
     String normalizedType = loginType.toLowerCase().trim();
     if (normalizedType.contains('google')) return '구글';
     if (normalizedType.contains('facebook')) return '페이스북';
     if (normalizedType.contains('naver')) return '네이버';
     if (normalizedType.contains('phone')) return '전화번호';
 
+    // 로그인 타입이 Enum toString()으로 출력된 경우
     if (loginType.contains('LoginType.')) {
       String enumValue = loginType.split('.').last.toLowerCase();
       if (enumValue == 'google') return '구글';
@@ -306,7 +256,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
       if (enumValue == 'naver') return '네이버';
       if (enumValue == 'phone') return '전화번호';
     }
-    return '알 수 없음 ($loginType)';
+
+    return '알 수 없음 ($loginType)'; // 디버깅을 위해 원래 값도 표시
   }
 
   Widget _buildActionButtons() {
@@ -316,21 +267,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
           CustomButton(
             text: '프로필 저장',
             onPressed: _saveProfile,
-            leadingIcon: const Icon(Icons.save),
+            icon: Icons.save,
           )
         else ...[
           CustomButton(
             text: '로그아웃',
             onPressed: _logout,
             backgroundColor: Colors.grey.shade700,
-            leadingIcon: const Icon(Icons.logout),
+            icon: Icons.logout,
           ),
           const SizedBox(height: 15),
           CustomButton(
             text: '계정 삭제',
             onPressed: _showDeleteConfirmation,
             backgroundColor: AppTheme.errorColor,
-            leadingIcon: const Icon(Icons.delete),
+            icon: Icons.delete,
           ),
         ],
       ],
@@ -342,6 +293,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       await _userController.updateProfile(
         name: _nameController.text.trim(),
       );
+
       setState(() {
         _isEditing = false;
       });
@@ -400,9 +352,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Widget _buildLoginHistory() {
-    final UserModel? user = _userController.user.value;
+    final user = _authController.userModel.value;
 
     if (user == null || user.loginHistory.isEmpty) {
+      return const SizedBox.shrink();
+    }
+    // 디버깅
+    print('User model login history count: ${user.loginHistory.length}');
+    for (var item in user.loginHistory) {
+      print('History item: ${item['loginType']} at ${item['timestamp']}');
+    }
+    if (user.loginHistory.isEmpty) {
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -440,6 +400,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const SizedBox(height: 20),
+
+        // 로그인 기록 헤더 (클릭 가능한 펼치기/접기 기능)
         InkWell(
           onTap: () => isExpanded.toggle(),
           borderRadius: BorderRadius.circular(12),
@@ -470,6 +432,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
           ),
         ),
+
+        // 펼쳐진 경우에만 로그인 기록 표시
         Obx(() => isExpanded.value
             ? Container(
                 margin: const EdgeInsets.only(top: 12),
@@ -481,6 +445,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   borderRadius: BorderRadius.circular(12),
                   child: Column(
                     children: [
+                      // 최근 5개만 기본 표시
                       ...List.generate(
                         user.loginHistory.length > 5
                             ? 5
@@ -489,13 +454,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           final reversedIndex =
                               user.loginHistory.length - 1 - index;
                           final logItem = user.loginHistory[reversedIndex];
+                          // 타입 안전성 확보
                           final loginType =
                               logItem['loginType'] as String? ?? 'unknown';
                           final timestamp = logItem['timestamp'];
+
                           return _buildLoginHistoryItem(
                               loginType, timestamp, index);
                         },
                       ),
+
+                      // 더 많은 기록이 있는 경우 "더 보기" 버튼 표시
                       if (user.loginHistory.length > 5)
                         _buildShowMoreButton(user),
                     ],
@@ -507,8 +476,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
+  // "더 보기" 버튼도 애니메이션 없이 즉시 전환되도록 수정
   Widget _buildShowMoreButton(UserModel user) {
+    // 전체 로그인 기록 보기 상태 관리
     final RxBool showAllHistory = false.obs;
+
     return Obx(() => showAllHistory.value
         ? Column(
             children: [
@@ -519,9 +491,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   final reversedIndex =
                       user.loginHistory.length - 1 - actualIndex;
                   final logItem = user.loginHistory[reversedIndex];
+                  // 타입 안전성 확보
                   final loginType =
                       logItem['loginType'] as String? ?? 'unknown';
                   final timestamp = logItem['timestamp'];
+
                   return _buildLoginHistoryItem(
                       loginType, timestamp, actualIndex);
                 },
@@ -598,8 +572,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ));
   }
 
+// 로그인 기록 항목을 안전하게 표시하는 함수
   Widget _buildLoginHistoryItem(
       String loginType, dynamic timestamp, int index) {
+    // 타임스탬프 안전하게 변환
     DateTime dateTime;
     if (timestamp is DateTime) {
       dateTime = timestamp;
