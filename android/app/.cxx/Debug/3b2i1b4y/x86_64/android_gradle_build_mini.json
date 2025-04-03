@@ -1,0 +1,20 @@
+{
+  "buildFiles": [
+    "/Applications/development/flutter/packages/flutter_tools/gradle/src/main/groovy/CMakeLists.txt"
+  ],
+  "cleanCommandsComponents": [
+    [
+      "/Users/park/Library/Android/sdk/cmake/3.22.1/bin/ninja",
+      "-C",
+      "/Users/park/Downloads/naturebasket_user-main/android/app/.cxx/Debug/3b2i1b4y/x86_64",
+      "clean"
+    ]
+  ],
+  "buildTargetsCommandComponents": [
+    "/Users/park/Library/Android/sdk/cmake/3.22.1/bin/ninja",
+    "-C",
+    "/Users/park/Downloads/naturebasket_user-main/android/app/.cxx/Debug/3b2i1b4y/x86_64",
+    "{LIST_OF_TARGETS_TO_BUILD}"
+  ],
+  "libraries": {}
+}

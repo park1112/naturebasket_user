@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 테마 관련 스타일 유지 -->
+    <style name="LaunchTheme" parent="@android:style/Theme.Light.NoTitleBar">
+        <item name="android:windowBackground">@drawable/launch_background</item>
+    </style>
+    <style name="NormalTheme" parent="@android:style/Theme.Light.NoTitleBar">
+        <item name="android:windowBackground">?android:colorBackground</item>
+    </style>
+
+     <!-- 추가 필요한 스타일 -->
+    <style name="AppTheme.NoActionBar" parent="Theme.AppCompat.Light.NoActionBar">
+        <item name="windowActionBar">false</item>
+        <item name="windowNoTitle">true</item>
+    </style>
+
+    <!-- 앱 이름 -->
+    <string name="app_name">flutter_login_template</string>
+
+    <!-- 페이스북 설정 -->
+    <string name="facebook_app_id">981820900769627</string>
+    <string name="fb_login_protocol_scheme">fb981820900769627</string>
+    <string name="facebook_client_token">324c786f9f340871a3bacea093f4751c</string>
+
+    <!-- 네이버 설정 -->
+    <string name="naver_client_id">IMwR6HhF_WSyvR_c0PoS</string>
+    <string name="naver_client_secret">4vgitNloaJ</string>
+    <string name="naver_client_name">farm-management</string>
+</resources>
