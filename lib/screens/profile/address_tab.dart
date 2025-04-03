@@ -128,22 +128,6 @@ class _AddressTabState extends State<AddressTab> {
         return GestureDetector(
           onTap: () => FocusScope.of(context).unfocus(),
           child: Scaffold(
-            // appBar: AppBar(
-            //   title: const Text('주소록 관리'),
-            //   centerTitle: true,
-            //   actions: [
-            //     if (!_isAddingNew)
-            //       IconButton(
-            //         icon: const Icon(Icons.add),
-            //         onPressed: () {
-            //           setState(() {
-            //             _isAddingNew = true;
-            //             _resetForm();
-            //           });
-            //         },
-            //       ),
-            //   ],
-            // ),
             body: _isAddingNew
                 ? _buildAddressForm(isSmallScreen)
                 : _buildAddressList(isSmallScreen),

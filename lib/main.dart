@@ -15,6 +15,7 @@ import 'controllers/product_controller.dart';
 import 'controllers/cart_controller.dart';
 import 'controllers/order_controller.dart';
 import 'controllers/user_controller.dart';
+import 'controllers/address_controller.dart';
 import 'screens/splash/splash_screen.dart';
 import 'screens/auth/login_screen.dart';
 import 'screens/home/home_screen.dart';
@@ -59,13 +60,14 @@ void main() async {
     Get.put(UserController());
     Get.put(ProductController());
     Get.put(CartController());
-    Get.put(OrderController()); // OrderController 등록
+    Get.put(OrderController());
+    Get.put(AddressController());
   } catch (e) {
     // Firebase 초기화 실패 처리
     print('Firebase initialization failed: $e');
     // 사용자에게 오류 메시지를 보여주거나 앱 종료 등의 로직 추가 가능
   }
-  await dotenv.load(fileName: ".env");
+  // await dotenv.load(fileName: ".env");
   runApp(const MyApp());
 }
 

@@ -33,19 +33,19 @@ enum OrderStatus {
 }
 
 class StatusUpdate {
-  final OrderStatus status;
+  final String status; // Store status as string representation
   final DateTime date;
   final String? message;
 
   StatusUpdate({
-    required this.status,
+    required OrderStatus statusEnum,
     required this.date,
     this.message,
-  });
+  }) : status = statusEnum.toString().split('.').last;
 
   Map<String, dynamic> toMap() {
     return {
-      'status': status.toString().split('.').last,
+      'status': status,
       'date': Timestamp.fromDate(date),
       'message': message,
     };
@@ -53,18 +53,20 @@ class StatusUpdate {
 
   factory StatusUpdate.fromMap(Map<String, dynamic> map) {
     return StatusUpdate(
-      status: OrderStatus.values.firstWhere(
+      statusEnum: OrderStatus.values.firstWhere(
         (e) => e.toString().split('.').last == map['status'],
         orElse: () => OrderStatus.pending,
       ),
-      date: (map['date'] as Timestamp).toDate(),
+      date: (map['date'] is Timestamp)
+          ? (map['date'] as Timestamp).toDate()
+          : DateTime.now(),
       message: map['message'],
     );
   }
 
   Map<String, dynamic> toJson() {
     return {
-      'status': status.toString().split('.').last,
+      'status': status,
       'date': date.toIso8601String(),
       'message': message,
     };
@@ -72,12 +74,18 @@ class StatusUpdate {
 
   factory StatusUpdate.fromJson(Map<String, dynamic> json) {
     return StatusUpdate(
-      status: OrderStatus.values.firstWhere(
+      statusEnum: OrderStatus.values.firstWhere(
         (e) => e.toString().split('.').last == json['status'],
         orElse: () => OrderStatus.pending,
       ),
       date: DateTime.parse(json['date']),
       message: json['message'],
+    );
+  }
+  OrderStatus get statusEnum {
+    return OrderStatus.values.firstWhere(
+      (e) => e.toString().split('.').last == status,
+      orElse: () => OrderStatus.pending,
     );
   }
 }
@@ -212,58 +220,82 @@ class OrderModel {
     }
   }
 
+  // 문자열에서 OrderStatus enum으로 변환하는 메서드
+  static OrderStatus _getOrderStatusFromString(String? statusStr) {
+    if (statusStr == null) return OrderStatus.pending;
+
+    try {
+      return OrderStatus.values.firstWhere(
+        (e) => e.toString().split('.').last == statusStr,
+        orElse: () => OrderStatus.pending,
+      );
+    } catch (e) {
+      return OrderStatus.pending;
+    }
+  }
+
   // Firestore 변환
   factory OrderModel.fromFirestore(DocumentSnapshot doc) {
     Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
 
-    final List<dynamic> itemsData = data['items'] ?? [];
-    final List<CartItemModel> items =
-        itemsData.map((item) => CartItemModel.fromFirestore(item)).toList();
+    // 여기서 items가 Map 형태로 들어오면 처리해야 함
+    List<CartItemModel> items = [];
+    if (data['items'] != null) {
+      if (data['items'] is List) {
+        items = (data['items'] as List)
+            .map((item) => item is Map<String, dynamic>
+                ? CartItemModel.fromMap(item)
+                : CartItemModel.fromFirestore(item))
+            .toList();
+      }
+    }
 
-    final List<dynamic> updatesData = data['statusUpdates'] ?? [];
-    final List<StatusUpdate> updates =
-        updatesData.map((update) => StatusUpdate.fromMap(update)).toList();
+    // statusUpdates도 처리
+    List<StatusUpdate> statusUpdates = [];
+    if (data['statusUpdates'] != null) {
+      if (data['statusUpdates'] is List) {
+        statusUpdates = (data['statusUpdates'] as List)
+            .map((update) =>
+                StatusUpdate.fromMap(update as Map<String, dynamic>))
+            .toList();
+      }
+    }
+
+    // deliveryInfo도 안전하게 처리
+    DeliveryInfo deliveryInfo;
+    if (data['deliveryInfo'] != null &&
+        data['deliveryInfo'] is Map<String, dynamic>) {
+      deliveryInfo =
+          DeliveryInfo.fromMap(data['deliveryInfo'] as Map<String, dynamic>);
+    } else {
+      // 기본 deliveryInfo 생성
+      deliveryInfo = DeliveryInfo(
+        name: '',
+        phoneNumber: '',
+        address: '',
+        zipCode: '',
+      );
+    }
 
     return OrderModel(
       id: doc.id,
       userId: data['userId'] ?? '',
       items: items,
-      orderDate: (data['orderDate'] as Timestamp).toDate(),
+      orderDate: data['orderDate'] is Timestamp
+          ? (data['orderDate'] as Timestamp).toDate()
+          : DateTime.now(),
       subtotal: (data['subtotal'] ?? 0).toDouble(),
       shippingFee: (data['shippingFee'] ?? 0).toDouble(),
       tax: (data['tax'] ?? 0).toDouble(),
       total: (data['total'] ?? 0).toDouble(),
-      status: OrderStatus.values.firstWhere(
-        (e) => e.toString().split('.').last == data['status'],
-        orElse: () => OrderStatus.pending,
-      ),
+      status: _getOrderStatusFromString(data['status']),
       paymentMethod: data['paymentMethod'],
       isPaid: data['isPaid'] ?? false,
       transactionId: data['transactionId'],
-      deliveryInfo: DeliveryInfo.fromMap(data['deliveryInfo'] ?? {}),
+      deliveryInfo: deliveryInfo,
       notes: data['notes'],
-      statusUpdates: updates,
+      statusUpdates: statusUpdates.isEmpty ? null : statusUpdates,
     );
-  }
-
-  // Map 변환
-  Map<String, dynamic> toMap() {
-    return {
-      'userId': userId,
-      'items': items.map((item) => item.toMap()).toList(),
-      'orderDate': Timestamp.fromDate(orderDate),
-      'subtotal': subtotal,
-      'shippingFee': shippingFee,
-      'tax': tax,
-      'total': total,
-      'status': status.toString().split('.').last,
-      'paymentMethod': paymentMethod,
-      'isPaid': isPaid,
-      'transactionId': transactionId,
-      'deliveryInfo': deliveryInfo.toMap(),
-      'notes': notes,
-      'statusUpdates': statusUpdates?.map((update) => update.toMap()).toList(),
-    };
   }
 
   // JSON 직렬화

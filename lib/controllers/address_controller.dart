@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:get/get.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/address_model.dart';
@@ -9,6 +10,7 @@ class AddressController extends GetxController {
 
   RxList<AddressModel> addressList = <AddressModel>[].obs;
   RxBool isLoading = false.obs;
+  StreamSubscription<QuerySnapshot>? _addressSubscription;
 
   // 사용자 ID 가져오기
   String? get userId => _authController.userModel.value?.uid;
@@ -16,7 +18,20 @@ class AddressController extends GetxController {
   @override
   void onInit() {
     super.onInit();
-    _listenToAddresses();
+    // 사용자 인증 상태 변경 감지
+    ever(_authController.userModel, (_) {
+      _listenToAddresses();
+    });
+    // 초기 로드
+    if (_authController.userModel.value != null) {
+      _listenToAddresses();
+    }
+  }
+
+  @override
+  void onClose() {
+    _addressSubscription?.cancel();
+    super.onClose();
   }
 
   // 배송지 컬렉션 참조 가져오기
@@ -26,25 +41,37 @@ class AddressController extends GetxController {
 
   // 실시간으로 배송지 목록 감시
   void _listenToAddresses() {
-    if (userId == null) return;
+    // 기존 구독 취소
+    _addressSubscription?.cancel();
+
+    if (userId == null) {
+      addressList.clear();
+      return;
+    }
 
     isLoading.value = true;
+    print('배송지 목록 로딩 시작: userId = $userId');
 
-    _getAddressesRef().snapshots().listen((snapshot) {
-      final List<AddressModel> addresses = snapshot.docs.map((doc) {
-        final data = doc.data() as Map<String, dynamic>;
-        return AddressModel.fromJson({
-          'id': doc.id,
-          ...data,
-        });
-      }).toList();
+    _addressSubscription = _getAddressesRef().snapshots().listen(
+      (snapshot) {
+        print('배송지 데이터 수신: ${snapshot.docs.length}개');
+        final List<AddressModel> addresses = snapshot.docs.map((doc) {
+          final data = doc.data() as Map<String, dynamic>;
+          return AddressModel.fromJson({
+            'id': doc.id,
+            ...data,
+          });
+        }).toList();
 
-      addressList.assignAll(addresses);
-      isLoading.value = false;
-    }, onError: (error) {
-      print('배송지 목록 조회 실패: $error');
-      isLoading.value = false;
-    });
+        addressList.assignAll(addresses);
+        isLoading.value = false;
+        print('배송지 목록 업데이트 완료: ${addresses.length}개');
+      },
+      onError: (error) {
+        print('배송지 목록 조회 실패: $error');
+        isLoading.value = false;
+      },
+    );
   }
 
   // 주소 추가

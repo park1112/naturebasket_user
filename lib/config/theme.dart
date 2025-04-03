@@ -1,5 +1,6 @@
 // lib/config/theme.dart
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 class AppTheme {
   // 앱 메인 색상 - 자연친화적 컬러
@@ -39,36 +40,39 @@ class AppTheme {
         borderRadius: BorderRadius.circular(12),
       ),
     ),
-    textTheme: const TextTheme(
-      displayLarge: TextStyle(
-        color: textPrimaryColor,
-        fontSize: 28,
-        fontWeight: FontWeight.bold,
-      ),
-      displayMedium: TextStyle(
-        color: textPrimaryColor,
-        fontSize: 24,
-        fontWeight: FontWeight.bold,
-      ),
-      bodyLarge: TextStyle(
-        color: textPrimaryColor,
-        fontSize: 16,
-      ),
-      bodyMedium: TextStyle(
-        color: textSecondaryColor,
-        fontSize: 14,
+    // GoogleFonts를 적용한 텍스트 테마
+    textTheme: GoogleFonts.notoSansTextTheme(
+      const TextTheme(
+        displayLarge: TextStyle(
+          color: textPrimaryColor,
+          fontSize: 28,
+          fontWeight: FontWeight.bold,
+        ),
+        displayMedium: TextStyle(
+          color: textPrimaryColor,
+          fontSize: 24,
+          fontWeight: FontWeight.bold,
+        ),
+        bodyLarge: TextStyle(
+          color: textPrimaryColor,
+          fontSize: 16,
+        ),
+        bodyMedium: TextStyle(
+          color: textSecondaryColor,
+          fontSize: 14,
+        ),
       ),
     ),
-    appBarTheme: const AppBarTheme(
+    appBarTheme: AppBarTheme(
       backgroundColor: primaryColor,
       elevation: 0,
       centerTitle: true,
-      titleTextStyle: TextStyle(
+      titleTextStyle: GoogleFonts.notoSans(
         color: Colors.white,
         fontSize: 20,
         fontWeight: FontWeight.bold,
       ),
-      iconTheme: IconThemeData(color: Colors.white),
+      iconTheme: const IconThemeData(color: Colors.white),
     ),
     elevatedButtonTheme: ElevatedButtonThemeData(
       style: ElevatedButton.styleFrom(
@@ -78,7 +82,7 @@ class AppTheme {
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(12),
         ),
-        textStyle: const TextStyle(
+        textStyle: GoogleFonts.notoSans(
           fontSize: 16,
           fontWeight: FontWeight.bold,
         ),
@@ -87,7 +91,7 @@ class AppTheme {
     textButtonTheme: TextButtonThemeData(
       style: TextButton.styleFrom(
         foregroundColor: primaryColor,
-        textStyle: const TextStyle(
+        textStyle: GoogleFonts.notoSans(
           fontSize: 16,
           fontWeight: FontWeight.w500,
         ),
@@ -101,7 +105,7 @@ class AppTheme {
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(12),
         ),
-        textStyle: const TextStyle(
+        textStyle: GoogleFonts.notoSans(
           fontSize: 16,
           fontWeight: FontWeight.bold,
         ),
@@ -127,8 +131,8 @@ class AppTheme {
         borderRadius: BorderRadius.circular(12),
         borderSide: const BorderSide(color: errorColor, width: 2),
       ),
-      hintStyle: const TextStyle(color: Color(0xFF9E9E9E)),
-      errorStyle: const TextStyle(color: errorColor),
+      hintStyle: GoogleFonts.notoSans(color: const Color(0xFF9E9E9E)),
+      errorStyle: GoogleFonts.notoSans(color: errorColor),
     ),
     bottomNavigationBarTheme: const BottomNavigationBarThemeData(
       backgroundColor: Colors.white,
@@ -150,31 +154,33 @@ class AppTheme {
       error: errorColor,
     ),
     cardColor: const Color(0xFF1E1E1E),
-    textTheme: const TextTheme(
-      displayLarge: TextStyle(
-        color: Colors.white,
-        fontSize: 28,
-        fontWeight: FontWeight.bold,
-      ),
-      displayMedium: TextStyle(
-        color: Colors.white,
-        fontSize: 24,
-        fontWeight: FontWeight.bold,
-      ),
-      bodyLarge: TextStyle(
-        color: Colors.white,
-        fontSize: 16,
-      ),
-      bodyMedium: TextStyle(
-        color: Colors.white70,
-        fontSize: 14,
+    textTheme: GoogleFonts.notoSansTextTheme(
+      const TextTheme(
+        displayLarge: TextStyle(
+          color: Colors.white,
+          fontSize: 28,
+          fontWeight: FontWeight.bold,
+        ),
+        displayMedium: TextStyle(
+          color: Colors.white,
+          fontSize: 24,
+          fontWeight: FontWeight.bold,
+        ),
+        bodyLarge: TextStyle(
+          color: Colors.white,
+          fontSize: 16,
+        ),
+        bodyMedium: TextStyle(
+          color: Colors.white70,
+          fontSize: 14,
+        ),
       ),
     ),
     appBarTheme: AppBarTheme(
       backgroundColor: primaryColor,
       elevation: 0,
       centerTitle: true,
-      titleTextStyle: const TextStyle(
+      titleTextStyle: GoogleFonts.notoSans(
         color: Colors.white,
         fontSize: 20,
         fontWeight: FontWeight.bold,
@@ -189,7 +195,7 @@ class AppTheme {
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(12),
         ),
-        textStyle: const TextStyle(
+        textStyle: GoogleFonts.notoSans(
           fontSize: 16,
           fontWeight: FontWeight.bold,
         ),
@@ -198,7 +204,7 @@ class AppTheme {
     textButtonTheme: TextButtonThemeData(
       style: TextButton.styleFrom(
         foregroundColor: primaryColor,
-        textStyle: const TextStyle(
+        textStyle: GoogleFonts.notoSans(
           fontSize: 16,
           fontWeight: FontWeight.w500,
         ),
@@ -212,7 +218,7 @@ class AppTheme {
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(12),
         ),
-        textStyle: const TextStyle(
+        textStyle: GoogleFonts.notoSans(
           fontSize: 16,
           fontWeight: FontWeight.bold,
         ),
@@ -238,8 +244,8 @@ class AppTheme {
         borderRadius: BorderRadius.circular(12),
         borderSide: const BorderSide(color: errorColor, width: 2),
       ),
-      hintStyle: const TextStyle(color: Colors.grey),
-      errorStyle: const TextStyle(color: errorColor),
+      hintStyle: GoogleFonts.notoSans(color: Colors.grey),
+      errorStyle: GoogleFonts.notoSans(color: errorColor),
     ),
     bottomNavigationBarTheme: const BottomNavigationBarThemeData(
       backgroundColor: Color(0xFF1E1E1E),

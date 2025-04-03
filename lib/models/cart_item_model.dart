@@ -100,11 +100,30 @@ class CartItemModel {
       id: map['id'] ?? '',
       productId: map['productId'] ?? '',
       productName: map['productName'] ?? '',
-      productImage: map['productImage'] as String?,
+      productImage: map['productImage'],
       price: (map['price'] ?? 0).toDouble(),
       quantity: map['quantity'] ?? 1,
       selectedOptions: map['selectedOptions'],
-      addedAt: DateTime.now(),
+      addedAt: map['addedAt'] is Timestamp
+          ? (map['addedAt'] as Timestamp).toDate()
+          : DateTime.now(),
     );
+  }
+}
+
+extension CartItemModelExtension on CartItemModel {
+  // Special toMap method for order creation
+  Map<String, dynamic> toOrderMap() {
+    return {
+      'id': id,
+      'productId': productId,
+      'productName': productName,
+      'productImage': productImage,
+      'price': price,
+      'quantity': quantity,
+      'selectedOptions': selectedOptions,
+      'addedAt': addedAt != null ? Timestamp.fromDate(addedAt!) : null,
+      // Don't include serverTimestamp here
+    };
   }
 }

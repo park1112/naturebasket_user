@@ -1,6 +1,6 @@
 // lib/screens/home/home_screen.dart (수정)
 import 'package:flutter/material.dart';
-import 'package:flutter_login_template/screens/product/order_history_screen.dart';
+import 'package:flutter_login_template/screens/order/order_history_screen.dart';
 import 'package:get/get.dart';
 import '../../config/theme.dart';
 import '../../controllers/auth_controller.dart';

@@ -19,6 +19,20 @@ class AddressModel {
     this.isDefault = false,
   });
 
+  // 빈 주소 모델 생성
+  factory AddressModel.empty() {
+    return AddressModel(
+      id: '',
+      name: '',
+      recipient: '',
+      contact: '',
+      address: '',
+      detailAddress: '',
+      deliveryMessage: '',
+      isDefault: false,
+    );
+  }
+
   // JSON에서 모델 객체로 변환
   factory AddressModel.fromJson(Map<String, dynamic> json) {
     return AddressModel(

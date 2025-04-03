@@ -23,6 +23,7 @@ class ProductModel {
   final bool isEco; // 친환경 제품 여부
   final List<String>? ecoLabels; // 친환경 인증 정보
   final int stockQuantity;
+  final int stock;
   final double averageRating;
   final int reviewCount;
   final DateTime createdAt;
@@ -33,6 +34,7 @@ class ProductModel {
   final bool isOrganic;
   final List<String> images;
   final Map<String, dynamic>? details;
+  final DateTime updatedAt;
 
   ProductModel({
     required this.id,
@@ -47,6 +49,7 @@ class ProductModel {
     required this.isEco,
     this.ecoLabels,
     required this.stockQuantity,
+    required this.stock,
     required this.averageRating,
     required this.reviewCount,
     required this.createdAt,
@@ -57,6 +60,7 @@ class ProductModel {
     required this.isOrganic,
     required this.images,
     this.details,
+    required this.updatedAt,
   });
   // 할인율 계산
   double get calculatedDiscountRate {
@@ -94,6 +98,7 @@ class ProductModel {
           ? List<String>.from(data['ecoLabels'])
           : null,
       stockQuantity: data['stockQuantity'] ?? 0,
+      stock: data['stock'] ?? 0,
       averageRating: (data['averageRating'] ?? 0).toDouble(),
       reviewCount: data['reviewCount'] ?? 0,
       createdAt: (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
@@ -104,6 +109,7 @@ class ProductModel {
       isOrganic: data['isOrganic'] ?? false,
       images: List<String>.from(data['images'] ?? []),
       details: data['details'],
+      updatedAt: (data['updatedAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
     );
   }
 
@@ -121,6 +127,7 @@ class ProductModel {
       'isEco': isEco,
       'ecoLabels': ecoLabels,
       'stockQuantity': stockQuantity,
+      'stock': stock,
       'averageRating': averageRating,
       'reviewCount': reviewCount,
       'createdAt': FieldValue.serverTimestamp(),
@@ -131,6 +138,7 @@ class ProductModel {
       'isOrganic': isOrganic,
       'images': images,
       'details': details,
+      'updatedAt': FieldValue.serverTimestamp(),
     };
   }
 
@@ -186,6 +194,7 @@ class ProductModel {
     bool? isEco,
     List<String>? ecoLabels,
     int? stockQuantity,
+    int? stock,
     double? averageRating,
     int? reviewCount,
     DateTime? createdAt,
@@ -196,6 +205,7 @@ class ProductModel {
     bool? isOrganic,
     List<String>? images,
     Map<String, dynamic>? details,
+    DateTime? updatedAt,
   }) {
     return ProductModel(
       id: id ?? this.id,
@@ -210,6 +220,7 @@ class ProductModel {
       isEco: isEco ?? this.isEco,
       ecoLabels: ecoLabels ?? this.ecoLabels,
       stockQuantity: stockQuantity ?? this.stockQuantity,
+      stock: stock ?? this.stock,
       averageRating: averageRating ?? this.averageRating,
       reviewCount: reviewCount ?? this.reviewCount,
       createdAt: createdAt ?? this.createdAt,
@@ -220,6 +231,7 @@ class ProductModel {
       isOrganic: isOrganic ?? this.isOrganic,
       images: images ?? this.images,
       details: details ?? this.details,
+      updatedAt: updatedAt ?? this.updatedAt,
     );
   }
 }
