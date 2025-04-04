@@ -10,7 +10,11 @@ enum OrderStatus {
   shipping, // 배송 중
   delivered, // 배송 완료
   cancelled, // 주문 취소
-  refunded; // 환불 완료
+  refunded, // 환불 완료
+  exchangeRequested, // 교환 요청
+  returnRequested, // 반품 요청
+  exchangeCompleted, // 교환 완료
+  returnCompleted; // 반품 완료
 
   Color get color {
     switch (this) {
@@ -28,6 +32,14 @@ enum OrderStatus {
         return Colors.red;
       case OrderStatus.refunded:
         return Colors.grey;
+      case OrderStatus.exchangeRequested:
+        return Colors.purple;
+      case OrderStatus.returnRequested:
+        return Colors.indigo;
+      case OrderStatus.exchangeCompleted:
+        return Colors.teal;
+      case OrderStatus.returnCompleted:
+        return Colors.blue;
     }
   }
 }
@@ -215,6 +227,14 @@ class OrderModel {
         return '주문 취소';
       case OrderStatus.refunded:
         return '환불 완료';
+      case OrderStatus.exchangeRequested:
+        return '교환 요청';
+      case OrderStatus.returnRequested:
+        return '반품 요청';
+      case OrderStatus.exchangeCompleted:
+        return '교환 완료';
+      case OrderStatus.returnCompleted:
+        return '반품 완료';
       default:
         return '알 수 없음';
     }

@@ -931,13 +931,14 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                   Container(
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
-                      color: AppTheme.primaryColor.withOpacity(0.1),
+                      color: _getStatusColorFromString(update.status)
+                          .withOpacity(0.1),
                       shape: BoxShape.circle,
                     ),
                     child: Icon(
-                      Icons.check,
+                      _getStatusIconFromString(update.status),
                       size: 16,
-                      color: AppTheme.primaryColor,
+                      color: _getStatusColorFromString(update.status),
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -946,7 +947,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          _getStatusText(update.statusEnum),
+                          _getStatusTextFromString(update.status),
                           style: const TextStyle(fontWeight: FontWeight.bold),
                         ),
                         const SizedBox(height: 4),
@@ -979,6 +980,71 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
         ],
       ),
     );
+  }
+
+  String _getStatusTextFromString(String status) {
+    if (status.contains('exchangeRequested')) {
+      return '교환 요청';
+    } else if (status.contains('returnRequested')) {
+      return '반품 요청';
+    } else if (status.contains('exchangeCompleted')) {
+      return '교환 완료';
+    } else if (status.contains('returnCompleted')) {
+      return '반품 완료';
+    } else if (status.contains('exchangeReturnCancelled')) {
+      return '교환/반품 취소';
+    }
+
+    // 기본 OrderStatus enum으로 처리 가능한 경우
+    try {
+      final statusEnum = OrderStatus.values.firstWhere(
+        (e) => e.toString().split('.').last == status,
+        orElse: () => OrderStatus.pending,
+      );
+      return _getStatusText(statusEnum);
+    } catch (e) {
+      return status; // 알 수 없는 상태는 그대로 표시
+    }
+  }
+
+// OrderDetailScreen.dart - 문자열 상태에서 아이콘 가져오는 새 메서드
+  IconData _getStatusIconFromString(String status) {
+    if (status.contains('exchange')) {
+      return Icons.swap_horiz;
+    } else if (status.contains('return')) {
+      return Icons.assignment_return;
+    }
+
+    // 기본 OrderStatus enum으로 처리 가능한 경우
+    try {
+      final statusEnum = OrderStatus.values.firstWhere(
+        (e) => e.toString().split('.').last == status,
+        orElse: () => OrderStatus.pending,
+      );
+      return Icons.check; // 기본 아이콘
+    } catch (e) {
+      return Icons.info_outline; // 알 수 없는 상태는 정보 아이콘
+    }
+  }
+
+// OrderDetailScreen.dart - 문자열 상태에서 색상 가져오는 새 메서드
+  Color _getStatusColorFromString(String status) {
+    if (status.contains('exchange')) {
+      return Colors.purple;
+    } else if (status.contains('return')) {
+      return Colors.indigo;
+    }
+
+    // 기본 상태 색상
+    if (status == 'pending') return Colors.blue;
+    if (status == 'confirmed') return Colors.green;
+    if (status == 'processing') return Colors.purple;
+    if (status == 'shipping') return Colors.orange;
+    if (status == 'delivered') return Colors.green;
+    if (status == 'cancelled') return Colors.red;
+    if (status == 'refunded') return Colors.red;
+
+    return Colors.grey; // 기본 색상
   }
 
   // 정보 행 위젯 - Row 대신 Wrap 사용 (Flexible 제거)
@@ -1141,6 +1207,14 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
       case OrderStatus.refunded:
         return '환불 완료';
       default:
+        // 커스텀 상태 처리
+        if (status.toString().contains('exchangeRequested')) {
+          return '교환 요청';
+        } else if (status.toString().contains('returnRequested')) {
+          return '반품 요청';
+        } else if (status.toString().contains('exchangeReturnCancelled')) {
+          return '교환/반품 취소';
+        }
         return '알 수 없음';
     }
   }

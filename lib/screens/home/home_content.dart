@@ -1,16 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_login_template/widgets/product_card.dart';
 import 'package:get/get.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 import '../../config/theme.dart';
 import '../../models/product_model.dart';
 import '../../services/product_service.dart';
 import '../../utils/custom_loading.dart';
-import '../product/category_screen.dart';
-import '../product/product_detail_screen.dart';
+import '../category/category_screen.dart';
 import '../product/search_screen.dart';
-import 'package:transparent_image/transparent_image.dart';
-import '../../utils/format_helper.dart';
-import '../../widgets/product_image.dart' as product_widget;
 
 class HomeContent extends StatefulWidget {
   const HomeContent({Key? key}) : super(key: key);
@@ -424,7 +420,7 @@ class _HomeContentState extends State<HomeContent> {
           ),
           const SizedBox(height: 16),
           SizedBox(
-            height: 300, // 상품 카드 높이에 맞게 조정
+            height: 310, // 상품 카드 높이에 맞게 조정
             child: products.isEmpty
                 ? Center(
                     child: Text(
@@ -436,173 +432,11 @@ class _HomeContentState extends State<HomeContent> {
                     scrollDirection: Axis.horizontal,
                     itemCount: products.length,
                     itemBuilder: (context, index) {
-                      return _buildProductCard(products[index]);
+                      return ProductCard(product: products[index]);
                     },
                   ),
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _buildProductCard(ProductModel product) {
-    return GestureDetector(
-      onTap: () {
-        Get.to(() => ProductDetailScreen(productId: product.id));
-      },
-      child: Container(
-        width: 200,
-        margin: const EdgeInsets.only(right: 16),
-        decoration: BoxDecoration(
-          color: Colors.white, // 카드 배경색 추가 (그림자 등 효과를 위해)
-          border: Border.all(color: Colors.grey.shade200),
-          borderRadius: BorderRadius.circular(8),
-          boxShadow: [
-            // 은은한 그림자 효과 (선택 사항)
-            BoxShadow(
-              color: Colors.grey.withOpacity(0.1),
-              spreadRadius: 1,
-              blurRadius: 3,
-              offset: const Offset(0, 1),
-            ),
-          ],
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            SizedBox(
-              height: 180,
-              width: double.infinity,
-              child: product.images.isNotEmpty
-                  ? product_widget.ProductImage(
-                      imageUrl: product.images[0],
-                      isCard: true,
-                    )
-                  : Container(
-                      color: Colors.grey.shade200,
-                      child: Icon(
-                        Icons.image_not_supported,
-                        size: 40,
-                        color: Colors.grey.shade400,
-                      ),
-                    ),
-            ),
-            // 상품 정보 영역은 Expanded로 남은 공간 채우기
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.all(10.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment:
-                      MainAxisAlignment.spaceBetween, // 요소 간 간격 균등 배분
-                  children: [
-                    // 친환경 태그 + 상품명
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        if (product.isEco)
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 6, vertical: 2),
-                            margin: const EdgeInsets.only(bottom: 4),
-                            decoration: BoxDecoration(
-                                color: Colors.green.shade50,
-                                borderRadius: BorderRadius.circular(4),
-                                border: Border.all(
-                                    color: Colors.green.shade100) // 테두리 추가
-                                ),
-                            child: Text(
-                              '친환경',
-                              style: TextStyle(
-                                fontSize: 10,
-                                color: Colors.green.shade700,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                          ),
-                        Text(
-                          product.name,
-                          style: const TextStyle(
-                              fontWeight: FontWeight.w500,
-                              fontSize: 14), // 폰트 크기 조정
-                          maxLines: 2, // 최대 2줄까지 표시
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ],
-                    ),
-
-                    // 가격 정보
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        if (product.discountPrice != null) ...[
-                          Row(
-                            children: [
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 4, vertical: 1),
-                                decoration: BoxDecoration(
-                                  color: AppTheme.primaryColor,
-                                  borderRadius: BorderRadius.circular(2),
-                                ),
-                                child: Text(
-                                  product.discountPercentage,
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 10,
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 4),
-                              Text(
-                                FormatHelper.formatPrice(product.price),
-                                style: TextStyle(
-                                  decoration: TextDecoration.lineThrough,
-                                  color: Colors.grey.shade500,
-                                  fontSize: 12,
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 2),
-                        ],
-                        Text(
-                          FormatHelper.formatPrice(product.sellingPrice),
-                          style: const TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16,
-                            color: AppTheme.primaryColor,
-                          ),
-                        ),
-                      ],
-                    ),
-
-                    // 평점 및 리뷰 수
-                    Row(
-                      children: [
-                        Icon(Icons.star,
-                            color: Colors.amber.shade600, size: 14), // 색상 조정
-                        const SizedBox(width: 2),
-                        Text(
-                          product.averageRating.toStringAsFixed(1),
-                          style: const TextStyle(
-                              fontSize: 12, fontWeight: FontWeight.w500),
-                        ),
-                        const SizedBox(width: 4),
-                        Text(
-                          '(${product.reviewCount})',
-                          style: TextStyle(
-                              fontSize: 12, color: Colors.grey.shade600),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ],
-        ),
       ),
     );
   }

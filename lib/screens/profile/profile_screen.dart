@@ -30,9 +30,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      // appBar: AppBar(
-      //   title: const Text('프로필'),
-      // ),
+      appBar: AppBar(
+        title: const Text('프로필'),
+        backgroundColor: AppTheme.primaryColor,
+      ),
       body: Obx(() {
         if (isLoading) {
           return const Center(child: CustomLoading());

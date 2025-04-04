@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_login_template/screens/product/product_detail_screen.dart';
+import 'package:flutter_login_template/screens/return/exchange_return_history_screen.dart';
+import 'package:flutter_login_template/screens/return/exchange_return_screen.dart';
 import 'package:get/get.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:intl/intl.dart';
@@ -181,22 +183,32 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.grey[50],
-      // appBar: AppBar(
-      //   title: Text(
-      //     '주문목록',
-      //     style: GoogleFonts.notoSans(
-      //       fontWeight: FontWeight.bold,
-      //       fontSize: 18,
-      //     ),
-      //   ),
-      //   centerTitle: true,
-      //   elevation: 0,
-      //   backgroundColor: Colors.white,
-      //   leading: IconButton(
-      //     icon: const Icon(Icons.arrow_back),
-      //     onPressed: () => Get.back(),
-      //   ),
-      // ),
+      appBar: AppBar(
+        title: Text(
+          '주문목록',
+          style: GoogleFonts.notoSans(
+            fontWeight: FontWeight.bold,
+            fontSize: 18,
+          ),
+        ),
+        centerTitle: true,
+        elevation: 0,
+        backgroundColor: AppTheme.primaryColor,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => Get.back(),
+        ),
+        actions: [
+          // 교환/반품 내역 버튼 추가
+          IconButton(
+            icon: const Icon(Icons.sync_alt),
+            tooltip: '교환/반품 내역',
+            onPressed: () {
+              Get.to(() => const ExchangeReturnHistoryScreen());
+            },
+          ),
+        ],
+      ),
       body: Column(
         children: [
           // 검색 필드
@@ -476,7 +488,7 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             decoration: BoxDecoration(
-              color: _getStatusBackgroundColor(order.status),
+              color: _getStatusBackgroundColor(order),
               borderRadius: const BorderRadius.only(
                 topLeft: Radius.circular(16),
                 topRight: Radius.circular(16),
@@ -496,15 +508,15 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
                       ),
                       child: Center(
                         child: Icon(
-                          _getStatusIcon(order.status),
+                          _getStatusIcon(order),
                           size: 14,
-                          color: _getStatusColor(order.status),
+                          color: _getStatusColor(order),
                         ),
                       ),
                     ),
                     const SizedBox(width: 8),
                     Text(
-                      _getStatusText(order.status),
+                      _getStatusText(order),
                       style: GoogleFonts.notoSans(
                         fontWeight: FontWeight.bold,
                         fontSize: 14,
@@ -548,13 +560,15 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
           ),
 
           // 주문 상품 리스트
-          ...order.items.map((item) => _buildOrderItemCard(item)).toList(),
+          ...order.items
+              .map((item) => _buildOrderItemCard(item, order))
+              .toList(),
         ],
       ),
     );
   }
 
-  Widget _buildOrderItemCard(CartItemModel item) {
+  Widget _buildOrderItemCard(CartItemModel item, OrderModel order) {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
@@ -753,11 +767,12 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
                     color: Colors.grey.shade700,
                     backgroundColor: Colors.grey.shade100,
                     onPressed: () {
-                      Get.snackbar(
-                        '교환/반품 신청',
-                        '${item.productName}에 대한 교환/반품을 신청합니다.',
-                        snackPosition: SnackPosition.TOP,
-                      );
+                      // 교환/반품 페이지로 이동
+                      // 선택한 주문과 상품에 대한 교환/반품 화면 열기
+                      Get.to(() => ExchangeReturnScreen(
+                            orderId: order.id,
+                            order: order,
+                          ));
                     },
                   ),
                   const SizedBox(width: 8),
@@ -835,8 +850,14 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
   }
 
   // 주문 상태 텍스트 반환
-  String _getStatusText(OrderStatus status) {
-    switch (status) {
+  String _getStatusText(OrderModel order) {
+    // 교환/반품 요청이 있는 경우
+    if (order.status == OrderStatus.delivered &&
+        _hasExchangeReturnRequest(order)) {
+      return '교환/반품 진행중';
+    }
+
+    switch (order.status) {
       case OrderStatus.pending:
         return '주문 접수';
       case OrderStatus.confirmed:
@@ -845,6 +866,10 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
         return '처리 중';
       case OrderStatus.shipping:
         return '배송 중';
+      case OrderStatus.exchangeRequested:
+        return '교환 요청';
+      case OrderStatus.returnRequested:
+        return '반품 요청';
       case OrderStatus.delivered:
         return '배송 완료';
       case OrderStatus.cancelled:
@@ -857,7 +882,17 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
   }
 
   // 주문 상태 아이콘 반환
-  IconData _getStatusIcon(OrderStatus status) {
+  IconData _getStatusIcon(OrderModel order) {
+    // 교환/반품 요청이 있는 경우
+    if (order.status == OrderStatus.delivered &&
+        _hasExchangeReturnRequest(order)) {
+      return Icons.sync_alt;
+    }
+
+    return _getRegularStatusIcon(order.status);
+  }
+
+  IconData _getRegularStatusIcon(OrderStatus status) {
     switch (status) {
       case OrderStatus.pending:
         return Icons.receipt_outlined;
@@ -878,9 +913,15 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
     }
   }
 
-  // 주문 상태 색상 반환
-  Color _getStatusColor(OrderStatus status) {
-    switch (status) {
+// OrderHistoryScreen.dart - _getStatusColor 메서드 수정
+  Color _getStatusColor(OrderModel order) {
+    // 교환/반품 요청이 있는 경우
+    if (order.status == OrderStatus.delivered &&
+        _hasExchangeReturnRequest(order)) {
+      return Colors.purple;
+    }
+
+    switch (order.status) {
       case OrderStatus.pending:
         return Colors.blue;
       case OrderStatus.confirmed:
@@ -900,9 +941,29 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
     }
   }
 
+  // 교환/반품 요청 확인
+  bool _hasExchangeReturnRequest(OrderModel order) {
+    if (order.statusUpdates == null) return false;
+
+    for (var update in order.statusUpdates!) {
+      // status 필드의 원본 문자열 값을 직접 확인
+      if (update.status == 'exchangeRequested' ||
+          update.status == 'returnRequested') {
+        return true;
+      }
+    }
+    return false;
+  }
+
   // 주문 상태 배경색 반환
-  Color _getStatusBackgroundColor(OrderStatus status) {
-    switch (status) {
+  Color _getStatusBackgroundColor(OrderModel order) {
+    // 교환/반품 요청이 있는 경우
+    if (order.status == OrderStatus.delivered &&
+        _hasExchangeReturnRequest(order)) {
+      return Colors.purple.shade400;
+    }
+
+    switch (order.status) {
       case OrderStatus.pending:
         return Colors.blue.shade400;
       case OrderStatus.confirmed:

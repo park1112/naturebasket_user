@@ -1,5 +1,8 @@
 // lib/screens/product/product_detail_screen.dart
 import 'package:flutter/material.dart';
+import 'package:flutter_login_template/controllers/product_controller.dart';
+import 'package:flutter_login_template/models/cart_item_model.dart';
+import 'package:flutter_login_template/screens/checkout/checkout_screen.dart';
 import 'package:get/get.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../../config/theme.dart';
@@ -8,7 +11,6 @@ import '../../models/product_model.dart';
 import '../../models/review_model.dart';
 import '../../services/product_service.dart';
 import '../../services/cart_service.dart';
-import '../../widgets/custom_button.dart';
 import '../../utils/custom_loading.dart';
 import '../cart/cart_screen.dart';
 import '../../controllers/cart_controller.dart';
@@ -31,6 +33,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
   final ProductService _productService = ProductService();
   final CartService _cartService = CartService();
   final AuthController _authController = Get.find<AuthController>();
+  final ProductController productController = Get.find<ProductController>();
 
   late TabController _tabController;
 
@@ -45,7 +48,9 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
   void initState() {
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
-    _loadProductData();
+    _loadProductData().then((_) {
+      productController.loadProductDetails(widget.productId);
+    });
   }
 
   @override
@@ -69,6 +74,9 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
 
         // 연관 상품 로드
         _relatedProducts = await _productService.getRelatedProducts(_product!);
+
+        // 이미지 프리로딩
+        preloadImages(_product!.images);
       }
     } catch (e) {
       print('Error loading product data: $e');
@@ -76,6 +84,45 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
       setState(() {
         _isLoading = false;
       });
+    }
+  }
+
+  void _buyNow() async {
+    if (_product == null) return;
+
+    if (_authController.firebaseUser.value == null) {
+      Get.snackbar(
+        '로그인 필요',
+        '구매를 진행하려면 로그인이 필요합니다.',
+        snackPosition: SnackPosition.TOP,
+      );
+      return;
+    }
+
+    try {
+      final cartController = Get.find<CartController>();
+      // 장바구니에 상품 추가 후 바로 결제 화면으로 이동
+      await cartController.addToCart(_product!, _quantity, null);
+
+      // 추가한 아이템을 바로 가져옴
+      final cartItem = CartItemModel(
+        id: _product!.id,
+        productId: _product!.id,
+        productName: _product!.name,
+        price: _product!.sellingPrice,
+        quantity: _quantity,
+        productImage: _product!.images.firstOrNull,
+        addedAt: DateTime.now(),
+      );
+
+      Get.to(() => CheckoutScreen(cartItems: [cartItem]));
+    } catch (e) {
+      print('Error buying now: $e');
+      Get.snackbar(
+        '오류',
+        '구매 진행 중 오류가 발생했습니다.',
+        snackPosition: SnackPosition.TOP,
+      );
     }
   }
 
@@ -142,12 +189,28 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
 
   @override
   Widget build(BuildContext context) {
+    // AppBar의 title을 결정하는 로직을 분리하거나 삼항 연산자를 사용합니다.
+    String appBarTitle;
+    if (_isLoading) {
+      appBarTitle = '로딩 중...'; // 로딩 중일 때 표시할 텍스트
+    } else if (_product == null) {
+      appBarTitle = '상품 정보 없음'; // 상품 정보가 없을 때 표시할 텍스트
+    } else {
+      // _product가 null이 아님이 확인되었으므로 ! 대신 . 사용 가능 (혹은 그대로 ! 사용)
+      appBarTitle = _product!.name;
+      // 또는 안전하게 접근: appBarTitle = _product.name;
+    }
+
     return Scaffold(
+      appBar: AppBar(
+        // 결정된 appBarTitle을 사용합니다.
+        title: Text(appBarTitle),
+      ),
       body: _isLoading
           ? const Center(child: CustomLoading())
           : _product == null
               ? _buildProductNotFound()
-              : _buildWebLayout(),
+              : _buildWebLayout(), // Scaffold 제거하고 바로 내용 반환
     );
   }
 
@@ -187,148 +250,144 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
   }
 
   Widget _buildWebLayout() {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(_product!.name),
-      ),
-      body: Stack(
-        children: [
-          SingleChildScrollView(
-            padding: const EdgeInsets.only(bottom: 120),
-            child: Column(
-              children: [
-                _buildImageGallery(false),
-                Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _buildProductInfo(),
-                      const SizedBox(height: 24),
-                      _buildQuantitySelector(),
-                      const SizedBox(height: 32),
-                      _buildDetailTabs(),
-                    ],
-                  ),
+    return Stack(
+      children: [
+        SingleChildScrollView(
+          padding: const EdgeInsets.only(bottom: 120),
+          child: Column(
+            children: [
+              _buildImageGallery(false),
+              Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildProductInfo(),
+                    const SizedBox(height: 24),
+                    _buildQuantitySelector(),
+                    const SizedBox(height: 32),
+                    _buildDetailTabs(),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+        Positioned(
+          bottom: 0,
+          left: 0,
+          right: 0,
+          child: Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.1),
+                  blurRadius: 10,
+                  offset: const Offset(0, -2),
                 ),
               ],
             ),
-          ),
-          Positioned(
-            bottom: 0,
-            left: 0,
-            right: 0,
-            child: Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.1),
-                    blurRadius: 10,
-                    offset: const Offset(0, -2),
+            child: SafeArea(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // 수량 선택 UI
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text(
+                        '구매수량',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      Row(
+                        children: [
+                          IconButton(
+                            onPressed: () {
+                              if (_quantity > 1) {
+                                setState(() {
+                                  _quantity--;
+                                });
+                              }
+                            },
+                            icon: const Icon(Icons.remove, size: 20),
+                            style: IconButton.styleFrom(
+                              backgroundColor: Colors.white,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(4),
+                                side: BorderSide(color: Colors.grey.shade300),
+                              ),
+                              minimumSize: const Size(36, 36),
+                              padding: EdgeInsets.zero,
+                            ),
+                          ),
+                          Container(
+                            width: 40,
+                            height: 36,
+                            alignment: Alignment.center,
+                            child: Text(
+                              '$_quantity',
+                              style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                          IconButton(
+                            onPressed: () {
+                              if (_quantity < 99) {
+                                setState(() {
+                                  _quantity++;
+                                });
+                              }
+                            },
+                            icon: const Icon(Icons.add, size: 20),
+                            style: IconButton.styleFrom(
+                              backgroundColor: Colors.white,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(4),
+                                side: BorderSide(color: Colors.grey.shade300),
+                              ),
+                              minimumSize: const Size(36, 36),
+                              padding: EdgeInsets.zero,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
                   ),
-                ],
-              ),
-              child: SafeArea(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    // 수량 선택 UI
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        const Text(
-                          '구매수량',
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w500,
-                          ),
+                  const SizedBox(height: 12),
+                  // 총 상품 금액
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text(
+                        '총 상품 금액',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
                         ),
-                        Row(
-                          children: [
-                            IconButton(
-                              onPressed: () {
-                                if (_quantity > 1) {
-                                  setState(() {
-                                    _quantity--;
-                                  });
-                                }
-                              },
-                              icon: const Icon(Icons.remove, size: 20),
-                              style: IconButton.styleFrom(
-                                backgroundColor: Colors.white,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(4),
-                                  side: BorderSide(color: Colors.grey.shade300),
-                                ),
-                                minimumSize: const Size(36, 36),
-                                padding: EdgeInsets.zero,
-                              ),
-                            ),
-                            Container(
-                              width: 40,
-                              height: 36,
-                              alignment: Alignment.center,
-                              child: Text(
-                                '$_quantity',
-                                style: const TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ),
-                            IconButton(
-                              onPressed: () {
-                                if (_quantity < 99) {
-                                  setState(() {
-                                    _quantity++;
-                                  });
-                                }
-                              },
-                              icon: const Icon(Icons.add, size: 20),
-                              style: IconButton.styleFrom(
-                                backgroundColor: Colors.white,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(4),
-                                  side: BorderSide(color: Colors.grey.shade300),
-                                ),
-                                minimumSize: const Size(36, 36),
-                                padding: EdgeInsets.zero,
-                              ),
-                            ),
-                          ],
+                      ),
+                      Text(
+                        FormatHelper.formatPrice(
+                            _product!.sellingPrice * _quantity),
+                        style: const TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          color: AppTheme.primaryColor,
                         ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    // 총 상품 금액
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        const Text(
-                          '총 상품 금액',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        Text(
-                          FormatHelper.formatPrice(
-                              _product!.sellingPrice * _quantity),
-                          style: const TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.bold,
-                            color: AppTheme.primaryColor,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    // 장바구니 버튼
-                    Row(
-                      children: [
-                        Container(
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  // 장바구니 버튼
+                  Row(
+                    children: [
+                      Container(
                           width: 48,
                           height: 48,
                           margin: const EdgeInsets.only(right: 12),
@@ -337,47 +396,64 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: IconButton(
-                            onPressed: () {
-                              // Todo: 좋아요 기능 구현
-                            },
-                            icon: Icon(
-                              Icons.favorite_border,
-                              color: Colors.red.shade400,
-                            ),
-                          ),
-                        ),
-                        Expanded(
-                          child: SizedBox(
-                            height: 48,
-                            child: ElevatedButton(
-                              onPressed:
-                                  _product!.isInStock ? _addToCart : null,
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: AppTheme.primaryColor,
-                                foregroundColor: Colors.white,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(8),
+                            icon: Obx(() => Icon(
+                                  productController.isWishlisted.value
+                                      ? Icons.favorite
+                                      : Icons.favorite_border,
+                                  color: Colors.red,
+                                )),
+                            onPressed: () =>
+                                productController.toggleWishlist(_product!),
+                          )),
+                      Expanded(
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: SizedBox(
+                                height: 48,
+                                child: ElevatedButton(
+                                  onPressed:
+                                      _product!.isInStock ? _addToCart : null,
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: AppTheme.primaryColor,
+                                    foregroundColor: Colors.white,
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                  ),
+                                  child: const Text('장바구니에 담기'),
                                 ),
                               ),
-                              child: const Text(
-                                '장바구니에 담기',
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: SizedBox(
+                                height: 48,
+                                child: ElevatedButton(
+                                  onPressed:
+                                      _product!.isInStock ? _buyNow : null,
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: Colors.orange,
+                                    foregroundColor: Colors.white,
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                  ),
+                                  child: const Text('바로 구매'),
                                 ),
                               ),
                             ),
-                          ),
+                          ],
                         ),
-                      ],
-                    ),
-                  ],
-                ),
+                      ),
+                    ],
+                  ),
+                ],
               ),
             ),
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 

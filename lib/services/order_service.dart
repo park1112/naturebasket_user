@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_login_template/controllers/auth_controller.dart';
 import 'package:flutter_login_template/controllers/cart_controller.dart';
 import 'package:flutter_login_template/models/address_model.dart' as address;
+import 'package:flutter_login_template/models/exchange_return_model.dart';
 import 'package:get/get.dart';
 import 'package:uuid/uuid.dart';
 import '../config/constants.dart';
@@ -474,6 +475,300 @@ class OrderService {
       return true;
     } catch (e) {
       print('주문 결제 상태 업데이트 중 오류: $e');
+      return false;
+    }
+  }
+
+  // 주문 취소 요청 생성
+  // Add these methods to your OrderService class
+
+// 교환/반품 요청 생성
+  Future<bool> createExchangeReturnRequest({
+    required String orderId,
+    required String type,
+    required String reason,
+    String? detailedReason,
+    required List<CartItemModel> items,
+  }) async {
+    try {
+      final String requestId = uuid.v4();
+      final now = DateTime.now();
+      final timestamp = Timestamp.fromDate(now);
+
+      // 요청 상품의 ID만 추출
+      final List<String> itemIds = items.map((item) => item.id).toList();
+
+      // 요청할 상품 정보를 Map으로 변환
+      final List<Map<String, dynamic>> itemsData = items.map((item) {
+        final Map<String, dynamic> itemMap =
+            Map<String, dynamic>.from(item.toMap());
+        if (itemMap.containsKey('addedAt')) {
+          itemMap['addedAt'] = timestamp;
+        }
+        return itemMap;
+      }).toList();
+
+      // 교환/반품 요청 데이터
+      Map<String, dynamic> requestData = {
+        'id': requestId,
+        'orderId': orderId,
+        'type': type,
+        'status': 'pending',
+        'reason': reason,
+        'detailedReason': detailedReason,
+        'items': itemsData,
+        'requestDate': timestamp,
+        'updatedAt': timestamp,
+      };
+
+      // Firestore에 교환/반품 요청 저장
+      await _firestore
+          .collection('exchange_return_requests')
+          .doc(requestId)
+          .set(requestData);
+
+      // 주문 상태 업데이트
+      String newStatus =
+          type == 'exchange' ? 'exchangeRequested' : 'returnRequested';
+      String statusMessage =
+          type == 'exchange' ? '교환 요청이 접수되었습니다.' : '반품 요청이 접수되었습니다.';
+
+      Map<String, dynamic> statusUpdate = {
+        'status': newStatus,
+        'date': timestamp,
+        'message': statusMessage,
+        'requestedItems': itemIds,
+      };
+
+      // 기존 주문 정보 가져오기
+      DocumentSnapshot orderDoc = await _firestore
+          .collection(AppConstants.ordersCollection)
+          .doc(orderId)
+          .get();
+
+      if (orderDoc.exists) {
+        Map<String, dynamic> data = orderDoc.data() as Map<String, dynamic>;
+        List<dynamic> updatesData = data['statusUpdates'] ?? [];
+        updatesData.add(statusUpdate);
+
+        // 주문 정보 업데이트 (메인 status도 함께 업데이트)
+        await _firestore
+            .collection(AppConstants.ordersCollection)
+            .doc(orderId)
+            .update({
+          'exchangeReturnRequestIds': FieldValue.arrayUnion([requestId]),
+          'statusUpdates': updatesData,
+          'status': newStatus, // 메인 status 필드 업데이트
+        });
+      }
+
+      return true;
+    } catch (e) {
+      print('교환/반품 요청 생성 중 오류: $e');
+      return false;
+    }
+  }
+
+// 교환/반품 요청 목록 조회
+  Future<List<ExchangeReturnModel>> getExchangeReturnRequests(
+      String userId) async {
+    try {
+      // 사용자 주문 목록 가져오기
+      final QuerySnapshot orderSnapshot = await _firestore
+          .collection(AppConstants.ordersCollection)
+          .where('userId', isEqualTo: userId)
+          .get();
+
+      List<String> orderIds = orderSnapshot.docs.map((doc) => doc.id).toList();
+
+      if (orderIds.isEmpty) {
+        return [];
+      }
+
+      // 교환/반품 요청 목록 가져오기
+      final QuerySnapshot requestSnapshot = await _firestore
+          .collection('exchange_return_requests')
+          .where('orderId', whereIn: orderIds)
+          .orderBy('requestDate', descending: true)
+          .get();
+
+      // 모델 객체로 변환
+      List<ExchangeReturnModel> requests = requestSnapshot.docs
+          .map((doc) => ExchangeReturnModel.fromFirestore(doc))
+          .toList();
+
+      return requests;
+    } catch (e) {
+      print('교환/반품 요청 목록 조회 중 오류: $e');
+      return [];
+    }
+  }
+
+// 교환/반품 요청 상세 조회 - 모델 사용
+  Future<ExchangeReturnModel?> getExchangeReturnRequestById(
+      String requestId) async {
+    try {
+      final DocumentSnapshot doc = await _firestore
+          .collection('exchange_return_requests')
+          .doc(requestId)
+          .get();
+
+      if (doc.exists) {
+        return ExchangeReturnModel.fromFirestore(doc);
+      }
+      return null;
+    } catch (e) {
+      print('교환/반품 요청 상세 조회 중 오류: $e');
+      return null;
+    }
+  }
+
+// 교환/반품 요청 상태 업데이트
+  Future<bool> updateExchangeReturnStatus(
+    String requestId,
+    String status, {
+    String? message,
+  }) async {
+    try {
+      // 현재 시간을 Timestamp로 설정
+      final now = Timestamp.fromDate(DateTime.now());
+
+      // 교환/반품 요청 업데이트
+      await _firestore
+          .collection('exchange_return_requests')
+          .doc(requestId)
+          .update({
+        'status': status,
+        'updatedAt': now,
+        if (message != null) 'statusMessage': message,
+      });
+
+      // 교환/반품 요청 정보 가져오기
+      DocumentSnapshot requestDoc = await _firestore
+          .collection('exchange_return_requests')
+          .doc(requestId)
+          .get();
+
+      if (requestDoc.exists) {
+        Map<String, dynamic> requestData =
+            requestDoc.data() as Map<String, dynamic>;
+        String orderId = requestData['orderId'];
+        String type = requestData['type']; // 'exchange' or 'return'
+
+        // 주문 상태 업데이트
+        if (status == 'completed') {
+          String orderStatus =
+              type == 'exchange' ? 'exchangeCompleted' : 'returnCompleted';
+          String statusMessage =
+              type == 'exchange' ? '교환이 완료되었습니다.' : '반품이 완료되었습니다.';
+
+          // 주문 상태 업데이트 데이터
+          Map<String, dynamic> statusUpdate = {
+            'status': orderStatus,
+            'date': now,
+            'message': message ?? statusMessage,
+            'requestId': requestId,
+          };
+
+          // 기존 주문 정보 가져오기
+          DocumentSnapshot orderDoc = await _firestore
+              .collection(AppConstants.ordersCollection)
+              .doc(orderId)
+              .get();
+
+          if (orderDoc.exists) {
+            Map<String, dynamic> data = orderDoc.data() as Map<String, dynamic>;
+            List<dynamic> updatesData = data['statusUpdates'] ?? [];
+
+            // 새 상태 업데이트 추가
+            updatesData.add(statusUpdate);
+
+            // 주문 정보 업데이트
+            await _firestore
+                .collection(AppConstants.ordersCollection)
+                .doc(orderId)
+                .update({
+              'statusUpdates': updatesData,
+            });
+          }
+        }
+      }
+
+      return true;
+    } catch (e) {
+      print('교환/반품 요청 상태 업데이트 중 오류: $e');
+      return false;
+    }
+  }
+
+// 교환/반품 요청 취소
+  Future<bool> cancelExchangeReturnRequest(String requestId) async {
+    try {
+      // 현재 시간을 Timestamp로 설정
+      final now = Timestamp.fromDate(DateTime.now());
+
+      // 교환/반품 요청 정보 가져오기
+      DocumentSnapshot requestDoc = await _firestore
+          .collection('exchange_return_requests')
+          .doc(requestId)
+          .get();
+
+      if (!requestDoc.exists) {
+        return false;
+      }
+
+      Map<String, dynamic> requestData =
+          requestDoc.data() as Map<String, dynamic>;
+      String orderId = requestData['orderId'];
+      String type = requestData['type']; // 'exchange' or 'return'
+
+      // 교환/반품 요청 상태를 취소로 변경
+      await _firestore
+          .collection('exchange_return_requests')
+          .doc(requestId)
+          .update({
+        'status': 'cancelled',
+        'updatedAt': now,
+        'statusMessage': '사용자에 의해 요청이 취소되었습니다.',
+      });
+
+      // 주문 상태 업데이트
+      String statusMessage =
+          type == 'exchange' ? '교환 요청이 취소되었습니다.' : '반품 요청이 취소되었습니다.';
+
+      // 주문 상태 업데이트 데이터
+      Map<String, dynamic> statusUpdate = {
+        'status': 'exchangeReturnCancelled',
+        'date': now,
+        'message': statusMessage,
+        'requestId': requestId,
+      };
+
+      // 기존 주문 정보 가져오기
+      DocumentSnapshot orderDoc = await _firestore
+          .collection(AppConstants.ordersCollection)
+          .doc(orderId)
+          .get();
+
+      if (orderDoc.exists) {
+        Map<String, dynamic> data = orderDoc.data() as Map<String, dynamic>;
+        List<dynamic> updatesData = data['statusUpdates'] ?? [];
+
+        // 새 상태 업데이트 추가
+        updatesData.add(statusUpdate);
+
+        // 주문 정보 업데이트
+        await _firestore
+            .collection(AppConstants.ordersCollection)
+            .doc(orderId)
+            .update({
+          'statusUpdates': updatesData,
+        });
+      }
+
+      return true;
+    } catch (e) {
+      print('교환/반품 요청 취소 중 오류: $e');
       return false;
     }
   }
