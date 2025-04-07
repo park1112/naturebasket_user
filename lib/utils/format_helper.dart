@@ -1,8 +1,14 @@
 import 'package:flutter/services.dart';
+import 'package:intl/intl.dart';
 
 class FormatHelper {
   static String formatPrice(num price) {
     return '${price.toStringAsFixed(0).replaceAllMapped(RegExp(r'(\d)(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]},')}원';
+  }
+
+  static String formatNumber(int number) {
+    final formatNumber = NumberFormat('#,###');
+    return formatNumber.format(number);
   }
 
   static String formatPhoneNumber(String phoneNumber) {

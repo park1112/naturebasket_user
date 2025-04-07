@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_login_template/utils/order_status_extensions.dart';
 import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:cached_network_image/cached_network_image.dart';
@@ -7,6 +8,7 @@ import '../../config/theme.dart';
 import '../../models/order_model.dart';
 import '../../models/cart_item_model.dart';
 import '../../services/order_service.dart';
+import '../../services/exchange_return_service.dart';
 import '../../utils/custom_loading.dart';
 
 class ExchangeReturnScreen extends StatefulWidget {
@@ -25,6 +27,7 @@ class ExchangeReturnScreen extends StatefulWidget {
 
 class _ExchangeReturnScreenState extends State<ExchangeReturnScreen> {
   final OrderService _orderService = OrderService();
+  final ExchangeReturnService _exchangeReturnService = ExchangeReturnService();
 
   OrderModel? _order;
   bool _isLoading = true;
@@ -42,8 +45,7 @@ class _ExchangeReturnScreenState extends State<ExchangeReturnScreen> {
   final Map<String, bool> _selectedItems = {};
 
   // 반품/교환 가능 여부
-  bool _isEligibleForReturnOrExchange = true;
-  String? _eligibilityMessage;
+  late ExchangeReturnEligibility _eligibility;
 
   @override
   void initState() {
@@ -70,33 +72,13 @@ class _ExchangeReturnScreenState extends State<ExchangeReturnScreen> {
   void _checkEligibility() {
     if (_order == null) return;
 
-    // 주문 상태가 취소됐거나 환불 처리된 경우 불가
-    if (_order!.status == OrderStatus.cancelled ||
-        _order!.status == OrderStatus.refunded) {
-      _isEligibleForReturnOrExchange = false;
-      _eligibilityMessage = '취소 또는 환불된 주문은 교환/반품이 불가능합니다.';
-      return;
-    }
+    _eligibility = _exchangeReturnService.checkEligibility(_order!);
 
-    // 배송 완료 후 7일 이내만 교환/반품 가능 (예시 정책)
-    if (_order!.deliveryInfo.deliveredAt != null) {
-      final deliveredDate = _order!.deliveryInfo.deliveredAt!;
-      final now = DateTime.now();
-      final difference = now.difference(deliveredDate).inDays;
-
-      if (difference > 7) {
-        _isEligibleForReturnOrExchange = false;
-        _eligibilityMessage = '배송 완료 후 7일이 지난 상품은 교환/반품이 불가능합니다.';
-        return;
-      }
-    }
-
-    // 배송중이거나 배송완료 상태만 교환/반품 가능
-    if (_order!.status != OrderStatus.shipping &&
-        _order!.status != OrderStatus.delivered) {
-      _isEligibleForReturnOrExchange = false;
-      _eligibilityMessage = '배송 중이거나 배송 완료된 상품만 교환/반품이 가능합니다.';
-      return;
+    // 교환이 불가능하고 반품만 가능한 경우 반품으로 타입 변경
+    if (!_eligibility.canExchange && _eligibility.canReturn) {
+      setState(() {
+        _selectedType = 'return';
+      });
     }
   }
 
@@ -169,6 +151,17 @@ class _ExchangeReturnScreenState extends State<ExchangeReturnScreen> {
       return;
     }
 
+    // 현재 선택된 타입 유효성 검사
+    if (!_exchangeReturnService.isValidRequestType(
+        _eligibility, _selectedType)) {
+      Get.snackbar(
+        '알림',
+        '현재 주문 상태에서는 ${_selectedType == 'exchange' ? '교환' : '반품'}이 불가능합니다.',
+        snackPosition: SnackPosition.TOP,
+      );
+      return;
+    }
+
     // 진행 확인 다이얼로그 표시
     final confirmed = await showDialog<bool>(
       context: context,
@@ -180,6 +173,50 @@ class _ExchangeReturnScreenState extends State<ExchangeReturnScreen> {
           TextButton(
             onPressed: () => Get.back(result: false),
             child: const Text('취소'),
+          ),
+          const SizedBox(width: 12),
+          // 상품 정보
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    _order!.items[0].productName,
+                    style: GoogleFonts.notoSans(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 14,
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 4),
+                  if (_order!.items[0].selectedOptions != null &&
+                      _order!.items[0].selectedOptions!.isNotEmpty)
+                    Container(
+                      margin: const EdgeInsets.only(bottom: 4),
+                      child: Text(
+                        _formatSelectedOptions(
+                            _order!.items[0].selectedOptions!),
+                        style: GoogleFonts.notoSans(
+                          fontSize: 12,
+                          color: Colors.grey.shade700,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  Text(
+                    '${NumberFormat('#,###').format(_order!.items[0].price.toInt())}원 | ${_order!.items[0].quantity}개',
+                    style: GoogleFonts.notoSans(
+                      fontSize: 13,
+                      color: Colors.grey.shade800,
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ),
           TextButton(
             onPressed: () => Get.back(result: true),
@@ -221,7 +258,6 @@ class _ExchangeReturnScreenState extends State<ExchangeReturnScreen> {
           .toList();
 
       // 교환/반품 요청 생성
-
       final success = await _orderService.createExchangeReturnRequest(
         orderId: widget.orderId,
         type: _selectedType,
@@ -229,7 +265,6 @@ class _ExchangeReturnScreenState extends State<ExchangeReturnScreen> {
         detailedReason: _detailReasonController.text,
         items: selectedItems,
       );
-      print('교환/반품 신청 처리 결과: $success');
 
       // 로딩 다이얼로그 닫기
       if (Get.isDialogOpen ?? false) {
@@ -310,6 +345,11 @@ class _ExchangeReturnScreenState extends State<ExchangeReturnScreen> {
     }
   }
 
+  // 선택된 옵션 포맷팅
+  String _formatSelectedOptions(Map<String, dynamic> options) {
+    return options.entries.map((e) => '${e.key}: ${e.value}').join(', ');
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -335,13 +375,13 @@ class _ExchangeReturnScreenState extends State<ExchangeReturnScreen> {
               ? _buildErrorMessage()
               : _order == null
                   ? _buildOrderNotFound()
-                  : !_isEligibleForReturnOrExchange
+                  : !_eligibility.isEligible
                       ? _buildNotEligible()
                       : _buildExchangeReturnForm(),
       bottomNavigationBar: _isLoading ||
               _errorMessage != null ||
               _order == null ||
-              !_isEligibleForReturnOrExchange
+              !_eligibility.isEligible
           ? null
           : _buildBottomBar(),
     );
@@ -476,7 +516,7 @@ class _ExchangeReturnScreenState extends State<ExchangeReturnScreen> {
             ),
             const SizedBox(height: 8),
             Text(
-              _eligibilityMessage ?? '현재 교환/반품이 불가능한 상품입니다.',
+              _eligibility.message ?? '현재 교환/반품이 불가능한 상품입니다.',
               style: GoogleFonts.notoSans(
                 color: Colors.grey.shade600,
               ),
@@ -515,8 +555,16 @@ class _ExchangeReturnScreenState extends State<ExchangeReturnScreen> {
         const SizedBox(height: 16),
 
         // 교환/반품 선택 토글
-        _buildTypeSelector(),
-        const SizedBox(height: 24),
+        if (_eligibility.canExchange && _eligibility.canReturn)
+          _buildTypeSelector(),
+        if (_eligibility.canExchange && _eligibility.canReturn)
+          const SizedBox(height: 24),
+
+        // 현재 가능한 요청 타입 알림 (교환 또는 반품만 가능한 경우)
+        if (_eligibility.canExchange != _eligibility.canReturn)
+          _buildRequestTypeNotice(),
+        if (_eligibility.canExchange != _eligibility.canReturn)
+          const SizedBox(height: 24),
 
         // 교환/반품할 상품 선택
         _buildProductSelection(),
@@ -576,6 +624,11 @@ class _ExchangeReturnScreenState extends State<ExchangeReturnScreen> {
           _buildInfoRow(
             '주문일자',
             DateFormat('yyyy년 MM월 dd일').format(_order!.orderDate),
+          ),
+          const SizedBox(height: 8),
+          _buildInfoRow(
+            '주문상태',
+            _order!.status.toKorean(),
           ),
           if (_order!.deliveryInfo.deliveredAt != null) ...[
             const SizedBox(height: 8),
@@ -663,143 +716,30 @@ class _ExchangeReturnScreenState extends State<ExchangeReturnScreen> {
     );
   }
 
-  Widget _buildProductSelection() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              '${_selectedType == 'exchange' ? '교환' : '반품'}할 상품 선택',
-              style: GoogleFonts.notoSans(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            TextButton(
-              onPressed: () {
-                bool allSelected = !_selectedItems.values.contains(false);
-                setState(() {
-                  for (var key in _selectedItems.keys) {
-                    _selectedItems[key] = !allSelected;
-                  }
-                });
-              },
-              child: Text(
-                _selectedItems.values.contains(false) ? '전체 선택' : '전체 해제',
-                style: GoogleFonts.notoSans(
-                  color: AppTheme.primaryColor,
-                ),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 8),
-        ..._order!.items.map((item) => _buildProductItem(item)).toList(),
-      ],
-    );
-  }
+  Widget _buildRequestTypeNotice() {
+    final bool onlyReturn = !_eligibility.canExchange && _eligibility.canReturn;
 
-  Widget _buildProductItem(CartItemModel item) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        border: Border.all(color: Colors.grey.shade200),
+        color: Colors.blue.shade50,
         borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.blue.shade100),
       ),
       child: Row(
         children: [
-          // 체크박스
-          Checkbox(
-            value: _selectedItems[item.id] ?? false,
-            onChanged: (value) {
-              setState(() {
-                _selectedItems[item.id] = value ?? false;
-              });
-            },
-            activeColor: AppTheme.primaryColor,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(4),
-            ),
-          ),
-          // 상품 이미지
-          ClipRRect(
-            borderRadius: BorderRadius.circular(8),
-            child: SizedBox(
-              width: 70,
-              height: 70,
-              child: item.productImage != null && item.productImage!.isNotEmpty
-                  ? CachedNetworkImage(
-                      imageUrl: item.productImage!,
-                      fit: BoxFit.cover,
-                      placeholder: (context, url) => Container(
-                        color: Colors.grey.shade100,
-                        child: const Center(
-                          child: SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          ),
-                        ),
-                      ),
-                      errorWidget: (context, url, error) => Container(
-                        color: Colors.grey.shade100,
-                        child: const Icon(
-                          Icons.image_not_supported_outlined,
-                          color: Colors.grey,
-                        ),
-                      ),
-                    )
-                  : Container(
-                      color: Colors.grey.shade100,
-                      child: const Icon(
-                        Icons.image_not_supported_outlined,
-                        color: Colors.grey,
-                      ),
-                    ),
-            ),
+          Icon(
+            Icons.info_outline,
+            size: 18,
+            color: Colors.blue.shade700,
           ),
           const SizedBox(width: 12),
-          // 상품 정보
           Expanded(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    item.productName,
-                    style: GoogleFonts.notoSans(
-                      fontWeight: FontWeight.w600,
-                      fontSize: 14,
-                    ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 4),
-                  if (item.selectedOptions != null &&
-                      item.selectedOptions!.isNotEmpty)
-                    Container(
-                      margin: const EdgeInsets.only(bottom: 4),
-                      child: Text(
-                        _formatSelectedOptions(item.selectedOptions!),
-                        style: GoogleFonts.notoSans(
-                          fontSize: 12,
-                          color: Colors.grey.shade700,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                  Text(
-                    '${NumberFormat('#,###').format(item.price.toInt())}원 | ${item.quantity}개',
-                    style: GoogleFonts.notoSans(
-                      fontSize: 13,
-                      color: Colors.grey.shade800,
-                    ),
-                  ),
-                ],
+            child: Text(
+              onlyReturn ? '현재 주문 상태에서는 반품만 가능합니다.' : '현재 주문 상태에서는 교환만 가능합니다.',
+              style: GoogleFonts.notoSans(
+                color: Colors.blue.shade700,
+                fontWeight: FontWeight.w500,
               ),
             ),
           ),
@@ -808,6 +748,74 @@ class _ExchangeReturnScreenState extends State<ExchangeReturnScreen> {
     );
   }
 
+  // Bottom Bar Widget
+  Widget _buildBottomBar() {
+    // 선택된 타입이 현재 주문 상태에서 유효한지 확인
+    bool isValidType =
+        _exchangeReturnService.isValidRequestType(_eligibility, _selectedType);
+    Color buttonColor = _selectedType == 'exchange'
+        ? AppTheme.primaryColor
+        : Colors.red.shade600;
+
+    if (!isValidType) {
+      buttonColor = Colors.grey.shade400;
+    }
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.shade200,
+            blurRadius: 4,
+            offset: const Offset(0, -2),
+          ),
+        ],
+      ),
+      child: SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed:
+                    _isSubmitting || !isValidType ? null : _submitRequest,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: buttonColor,
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  disabledBackgroundColor: Colors.grey.shade300,
+                ),
+                child: _isSubmitting
+                    ? SizedBox(
+                        width: 24,
+                        height: 24,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      )
+                    : Text(
+                        '${_selectedType == 'exchange' ? '교환' : '반품'} 신청하기',
+                        style: GoogleFonts.notoSans(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+// Reason Selector Widget
   Widget _buildReasonSelector() {
     final reasons = _selectedType == 'exchange'
         ? [
@@ -880,6 +888,7 @@ class _ExchangeReturnScreenState extends State<ExchangeReturnScreen> {
     );
   }
 
+// Detailed Reason Input Widget
   Widget _buildDetailedReasonInput() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -916,6 +925,7 @@ class _ExchangeReturnScreenState extends State<ExchangeReturnScreen> {
     );
   }
 
+// Information Note Widget
   Widget _buildInformationNote() {
     return Container(
       padding: const EdgeInsets.all(16),
@@ -960,62 +970,7 @@ class _ExchangeReturnScreenState extends State<ExchangeReturnScreen> {
     );
   }
 
-  Widget _buildBottomBar() {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey.shade200,
-            blurRadius: 4,
-            offset: const Offset(0, -2),
-          ),
-        ],
-      ),
-      child: SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: _isSubmitting ? null : _submitRequest,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: _selectedType == 'exchange'
-                      ? AppTheme.primaryColor
-                      : Colors.red.shade600,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  disabledBackgroundColor: Colors.grey.shade300,
-                ),
-                child: _isSubmitting
-                    ? SizedBox(
-                        width: 24,
-                        height: 24,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: Colors.white,
-                        ),
-                      )
-                    : Text(
-                        '${_selectedType == 'exchange' ? '교환' : '반품'} 신청하기',
-                        style: GoogleFonts.notoSans(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                        ),
-                      ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
+// Info Row Widget
   Widget _buildInfoRow(String label, String value) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1042,11 +997,152 @@ class _ExchangeReturnScreenState extends State<ExchangeReturnScreen> {
     );
   }
 
-  String _formatSelectedOptions(Map<String, dynamic> options) {
-    List<String> formattedOptions = [];
-    options.forEach((key, value) {
-      formattedOptions.add('$key: $value');
-    });
-    return formattedOptions.join(', ');
+  Widget _buildProductSelection() {
+    return Card(
+      margin: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      elevation: 2,
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // 헤더: 타이틀 및 전체 선택/해제 버튼
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  '${_selectedType == 'exchange' ? '교환' : '반품'}할 상품 선택',
+                  style: GoogleFonts.notoSans(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                TextButton(
+                  onPressed: () {
+                    bool allSelected = !_selectedItems.values.contains(false);
+                    setState(() {
+                      for (var key in _selectedItems.keys) {
+                        _selectedItems[key] = !allSelected;
+                      }
+                    });
+                  },
+                  child: Text(
+                    _selectedItems.values.contains(false) ? '전체 선택' : '전체 해제',
+                    style: GoogleFonts.notoSans(color: AppTheme.primaryColor),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            // 상품 목록: 각 상품을 카드 형태로 표시
+            Column(
+              children:
+                  _order!.items.map((item) => _buildProductItem(item)).toList(),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildProductItem(CartItemModel item) {
+    return Card(
+      margin: const EdgeInsets.only(bottom: 12),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      elevation: 1,
+      child: Padding(
+        padding: const EdgeInsets.all(12.0),
+        child: Row(
+          children: [
+            // 선택 체크박스
+            Checkbox(
+              value: _selectedItems[item.id] ?? false,
+              onChanged: (value) {
+                setState(() {
+                  _selectedItems[item.id] = value ?? false;
+                });
+              },
+              activeColor: AppTheme.primaryColor,
+            ),
+            // 상품 이미지
+            ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: SizedBox(
+                width: 70,
+                height: 70,
+                child: item.productImage != null &&
+                        item.productImage!.isNotEmpty
+                    ? CachedNetworkImage(
+                        imageUrl: item.productImage!,
+                        fit: BoxFit.cover,
+                        placeholder: (context, url) => Container(
+                          color: Colors.grey.shade100,
+                          child: const Center(
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          ),
+                        ),
+                        errorWidget: (context, url, error) => Container(
+                          color: Colors.grey.shade100,
+                          child: const Icon(
+                            Icons.image_not_supported_outlined,
+                            color: Colors.grey,
+                          ),
+                        ),
+                      )
+                    : Container(
+                        color: Colors.grey.shade100,
+                        child: const Icon(
+                          Icons.image_not_supported_outlined,
+                          color: Colors.grey,
+                        ),
+                      ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            // 상품 상세 정보
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // 상품명
+                  Text(
+                    item.productName,
+                    style: GoogleFonts.notoSans(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 14,
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 4),
+                  // 선택된 옵션 (있을 경우)
+                  if (item.selectedOptions != null &&
+                      item.selectedOptions!.isNotEmpty)
+                    Text(
+                      _formatSelectedOptions(item.selectedOptions!),
+                      style: GoogleFonts.notoSans(
+                        fontSize: 12,
+                        color: Colors.grey.shade600,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  const SizedBox(height: 4),
+                  // 가격 및 수량 정보
+                  Text(
+                    '${NumberFormat('#,###').format(item.price.toInt())}원  |  ${item.quantity}개',
+                    style: GoogleFonts.notoSans(
+                      fontSize: 13,
+                      color: Colors.grey.shade800,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:flutter_login_template/controllers/review_controller.dart';
 import 'package:flutter_login_template/screens/auth/verification_code_screen.dart';
 import 'package:get/get.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -29,6 +30,9 @@ void _configureApp() {
 void main() async {
   Get.testMode = true;
   WidgetsFlutterBinding.ensureInitialized();
+
+  // .env 파일 로드
+  await dotenv.load(fileName: ".env");
 
   // 상태바 색상 설정
   SystemChrome.setSystemUIOverlayStyle(
@@ -62,12 +66,12 @@ void main() async {
     Get.put(CartController());
     Get.put(OrderController());
     Get.put(AddressController());
+    Get.put(ReviewController());
   } catch (e) {
     // Firebase 초기화 실패 처리
     print('Firebase initialization failed: $e');
     // 사용자에게 오류 메시지를 보여주거나 앱 종료 등의 로직 추가 가능
   }
-  // await dotenv.load(fileName: ".env");
   runApp(const MyApp());
 }
 

@@ -420,7 +420,7 @@ class _HomeContentState extends State<HomeContent> {
           ),
           const SizedBox(height: 16),
           SizedBox(
-            height: 310, // 상품 카드 높이에 맞게 조정
+            height: 370, // 상품 카드 높이에 맞게 조정
             child: products.isEmpty
                 ? Center(
                     child: Text(

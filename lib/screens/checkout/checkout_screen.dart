@@ -17,6 +17,9 @@ import '../../utils/custom_loading.dart';
 import 'order_complete_screen.dart';
 import '../../utils/format_helper.dart';
 import '../../screens/profile/address_tab.dart';
+// 포트원 결제 서비스 임포트
+import 'package:flutter_login_template/services/portone_payment_service.dart';
+import 'order_failure_screen.dart'; // 아래에 생성할 주문 실패 페이지
 
 class CheckoutScreen extends StatefulWidget {
   final List<CartItemModel> cartItems;
@@ -35,6 +38,8 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   final AddressController _addressController = Get.find<AddressController>();
   final CartController _cartController = Get.find<CartController>();
   final OrderService _orderService = OrderService();
+  // 포트원 결제 서비스 인스턴스 추가
+  final PortOnePaymentService _portOnePaymentService = PortOnePaymentService();
 
   final _formKey = GlobalKey<FormState>();
   final _requestController = TextEditingController();
@@ -43,26 +48,23 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   String _selectedPaymentMethod = '신용카드';
   String? _orderId;
 
-  // Selected address from address list
+  // 선택된 배송지 (주소 목록에서 선택)
   Rx<address.AddressModel?> selectedAddress = Rx<address.AddressModel?>(null);
 
   @override
   void initState() {
     super.initState();
-    // Wait for user authentication to be ready
+    // 사용자 정보가 업데이트되면 기본 배송지를 로드
     ever(_authController.userModel, (_) {
       _loadDefaultAddress();
     });
-    // Initial load if user is already authenticated
     if (_authController.userModel.value != null) {
       _loadDefaultAddress();
     }
   }
 
   void _loadDefaultAddress() {
-    // First try to get the default address from the address controller
     if (_addressController.addressList.isEmpty) {
-      // If no addresses are loaded yet, create an empty one with user info
       final user = _authController.userModel.value;
       if (user != null) {
         selectedAddress.value = address.AddressModel(
@@ -80,12 +82,9 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       }
       return;
     }
-
-    // Try to find default address
     final defaultAddress = _addressController.addressList.firstWhere(
         (addr) => addr.isDefault,
         orElse: () => _addressController.addressList.first);
-
     selectedAddress.value = defaultAddress;
   }
 
@@ -99,7 +98,8 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     return widget.cartItems.fold(0, (sum, item) => sum + item.totalPrice);
   }
 
-  void _placeOrder() {
+  /// 주문 생성 후 포트원 결제 처리 및 결제 실패 시 주문 실패 페이지로 이동
+  void _placeOrder() async {
     if (!_formKey.currentState!.validate()) {
       Get.snackbar(
         '알림',
@@ -122,13 +122,62 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
           _isLoading = isLoading;
         });
       },
-      onComplete: (orderId) {
+      onComplete: (orderId) async {
         if (orderId != null) {
-          // Navigate to order complete screen
-          Get.off(
-            () => OrderCompleteScreen(orderId: orderId),
-            arguments: {'totalAmount': _calculateTotalPrice()},
+          double amount = _calculateTotalPrice();
+          String customerName = selectedAddress.value?.recipient ??
+              _authController.userModel.value?.name ??
+              '';
+          String customerTel = selectedAddress.value?.contact ??
+              _authController.userModel.value?.phoneNumber ??
+              '';
+
+          // 포트원 결제 처리 호출
+          Map<String, dynamic>? paymentResult =
+              await _portOnePaymentService.processPayment(
+            context: context,
+            orderId: orderId,
+            amount: amount,
+            orderName: '주문 #$orderId',
+            customerName: customerName,
+            customerTel: customerTel,
           );
+
+          if (paymentResult != null && paymentResult['success'] == true) {
+            // 결제 성공 시 주문 결제 상태 업데이트
+            await _orderService.updatePaymentStatus(
+              orderId,
+              true,
+              transactionId: paymentResult['imp_uid'] ??
+                  'txn_${DateTime.now().millisecondsSinceEpoch}',
+              paymentMethod:
+                  paymentResult['payment_method'] ?? _selectedPaymentMethod,
+              paymentDetails: paymentResult,
+            );
+
+            Get.snackbar(
+              '결제 성공',
+              '결제가 완료되었습니다.',
+              snackPosition: SnackPosition.TOP,
+              backgroundColor: Colors.green.shade100,
+              colorText: Colors.green.shade800,
+            );
+
+            // 결제 성공 후 주문 완료 화면으로 이동
+            Get.off(
+              () => OrderCompleteScreen(orderId: orderId),
+              arguments: {'totalAmount': amount},
+            );
+          } else {
+            String errorMessage = paymentResult != null
+                ? (paymentResult['message'] ?? '결제 처리 중 문제가 발생했습니다.')
+                : '결제가 취소되었습니다.';
+            // 결제 실패 시 주문 실패 페이지로 이동
+            Get.off(
+              () => OrderFailureScreen(
+                  totalAmount: amount, errorMessage: errorMessage),
+            );
+          }
         } else {
           setState(() {
             _isLoading = false;
@@ -141,12 +190,6 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         }
       },
     );
-  }
-
-  // 결제 처리 시뮬레이션 (실제 결제 연동 시 이 부분을 대체)
-  Future<void> _simulatePayment() async {
-    // 실제 결제 처리를 시뮬레이션하기 위한 지연
-    await Future.delayed(const Duration(seconds: 2));
   }
 
   void _openAddressSelection() async {
@@ -173,7 +216,6 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   @override
   Widget build(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
-    // 웹 레이아웃 기준 (예: 900px 이상)
     final isWebLayout = screenWidth > 900;
 
     return Scaffold(
@@ -189,7 +231,6 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   }
 
   Widget _buildWebCheckoutLayout(double screenWidth) {
-    // 웹 레이아웃은 화면의 80% 정도를 사용하도록 함
     final contentWidth = screenWidth * 0.8;
     return SingleChildScrollView(
       padding: const EdgeInsets.all(24.0),
@@ -199,7 +240,6 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // 왼쪽: 배송 정보 및 결제 수단 폼
               SizedBox(
                 width: contentWidth * 0.6,
                 child: Form(
@@ -215,7 +255,6 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                 ),
               ),
               const SizedBox(width: 32),
-              // 오른쪽: 주문 요약
               SizedBox(
                 width: contentWidth * 0.4 - 32,
                 child: _buildOrderSummary(),
@@ -263,13 +302,8 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
           style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 24),
-
-        // 선택된 배송지 표시
         Obx(() => _buildSelectedAddressCard()),
-
         const SizedBox(height: 16),
-
-        // 배송지 변경 버튼
         SizedBox(
           width: double.infinity,
           child: OutlinedButton.icon(
@@ -283,10 +317,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
             ),
           ),
         ),
-
         const SizedBox(height: 24),
-
-        // 배송 요청사항
         CustomTextField(
           label: '배송 요청사항 (선택)',
           hint: '배송 시 요청사항을 입력해주세요',
@@ -315,9 +346,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         ),
       );
     }
-
-    final address = selectedAddress.value!;
-
+    final addr = selectedAddress.value!;
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -331,17 +360,15 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
           Row(
             children: [
               Text(
-                address.name.isNotEmpty ? address.name : '배송지',
+                addr.name.isNotEmpty ? addr.name : '배송지',
                 style:
                     const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
               ),
               const SizedBox(width: 8),
-              if (address.isDefault)
+              if (addr.isDefault)
                 Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 2,
-                  ),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                   decoration: BoxDecoration(
                     color: AppTheme.primaryColor,
                     borderRadius: BorderRadius.circular(12),
@@ -357,9 +384,9 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
             ],
           ),
           const Divider(height: 24),
-          _infoRow('수령인', address.recipient),
-          _infoRow('연락처', address.contact),
-          _infoRow('주소', '${address.address} ${address.detailAddress}'),
+          _infoRow('수령인', addr.recipient),
+          _infoRow('연락처', addr.contact),
+          _infoRow('주소', '${addr.address} ${addr.detailAddress}'),
         ],
       ),
     );
@@ -369,7 +396,6 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           SizedBox(
             width: 80,
@@ -537,7 +563,6 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
             ],
           ),
           const SizedBox(height: 32),
-          // 데스크톱 웹 레이아웃에서는 결제하기 버튼을 따로 표시
           if (MediaQuery.of(context).size.width > 900)
             CustomButton(
               text: '결제하기',
@@ -614,7 +639,6 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   }
 }
 
-// 배송지 모델 확장 메소드
 extension AddressModelExtension on address.AddressModel {
   static address.AddressModel empty() {
     return address.AddressModel(
@@ -625,114 +649,6 @@ extension AddressModelExtension on address.AddressModel {
       address: '',
       detailAddress: '',
       isDefault: false,
-    );
-  }
-}
-
-// 주문 완료 화면 업데이트
-class OrderCompleteScreen extends StatefulWidget {
-  final String orderId;
-
-  const OrderCompleteScreen({
-    Key? key,
-    required this.orderId,
-  }) : super(key: key);
-
-  @override
-  State<OrderCompleteScreen> createState() => _OrderCompleteScreenState();
-}
-
-class _OrderCompleteScreenState extends State<OrderCompleteScreen> {
-  final OrderService _orderService = OrderService();
-  OrderModel? _order;
-  bool _isLoading = true;
-
-  @override
-  void initState() {
-    super.initState();
-    _loadOrderDetails();
-  }
-
-  Future<void> _loadOrderDetails() async {
-    try {
-      final order = await _orderService.getOrderById(widget.orderId);
-      setState(() {
-        _order = order;
-        _isLoading = false;
-      });
-    } catch (e) {
-      setState(() {
-        _isLoading = false;
-      });
-      print('주문 상세 정보 로딩 오류: $e');
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    // 기존 주문 완료 화면 UI에 주문 상세 정보 추가
-    final arguments = Get.arguments as Map<String, dynamic>?;
-    final totalAmount = arguments?['totalAmount'] as double? ?? 0.0;
-
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('주문 완료'),
-        automaticallyImplyLeading: false,
-      ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : Padding(
-              padding: const EdgeInsets.all(24.0),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Icon(
-                    Icons.check_circle_outline,
-                    color: Colors.green,
-                    size: 80,
-                  ),
-                  const SizedBox(height: 24),
-                  const Text(
-                    '주문이 완료되었습니다!',
-                    style: TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  Text(
-                    '주문번호: ${widget.orderId}',
-                    style: const TextStyle(
-                      fontSize: 16,
-                      color: Colors.grey,
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-                  Text(
-                    '총 결제 금액: ${FormatHelper.formatPrice(totalAmount)}',
-                    style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 48),
-                  CustomButton(
-                    text: '홈으로 돌아가기',
-                    onPressed: () => Get.offAllNamed('/main'),
-                    backgroundColor: AppTheme.primaryColor,
-                  ),
-                  const SizedBox(height: 16),
-                  CustomButton(
-                    text: '주문 내역 보기',
-                    onPressed: () =>
-                        Get.offAllNamed('/main', arguments: {'goToPage': 3}),
-                    backgroundColor: Colors.transparent,
-                    textColor: AppTheme.primaryColor,
-                    isOutlined: true,
-                  ),
-                ],
-              ),
-            ),
     );
   }
 }

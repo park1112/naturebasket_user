@@ -24,52 +24,75 @@
 	<key>CFBundleVersion</key>
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
 
-	<!-- 네이버 로그인 설정 수정 -->
-    <key>LSApplicationQueriesSchemes</key>
-    <array>
-        <string>naversearchapp</string>
-        <string>naversearchthirdlogin</string>
-        <string>fbapi</string>
-        <string>fb-messenger-share-api</string>
-        <string>fbauth2</string>
-        <string>fbshareextension</string>
-    </array>
-    <key>NaverThirdPartyLogin</key>
-    <dict>
-        <key>ConsumerKey</key>
-        <string>IMwR6HhF_WSyvR_c0PoS</string>
-        <key>ConsumerSecret</key>
-        <string>4vgitNloaJ</string>
-        <key>ServiceAppName</key>
-        <string>farm-management</string>
-        <key>ServiceAppUrlScheme</key>
-        <string>farm-management</string>
-    </dict>
-	<!-- Facebook 설정 추가 -->
+	<!-- URL 스킴 설정 -->
 	<key>CFBundleURLTypes</key>
 	<array>
 		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLName</key>
+			<string>fluttershopapp</string>
 			<key>CFBundleURLSchemes</key>
 			<array>
+				<string>fluttershopapp</string>
 				<string>fb981820900769627</string>
 			</array>
 		</dict>
 	</array>
+
+	<!-- 외부 URL 스킴 허용 -->
+	<key>LSApplicationQueriesSchemes</key>
+	<array>
+		<string>https</string>
+		<string>http</string>
+		<string>tel</string>
+		<string>mailto</string>
+		<string>itms-apps</string>
+		<string>iamportapp</string>
+		<string>kftc-bankpay</string>
+		<string>ispmobile</string>
+		<string>shinhan-sr-ansimclick</string>
+		<string>kb-acp</string>
+		<string>mpocket.online.ansimclick</string>
+		<string>hdcardappcardansimclick</string>
+		<string>smhyundaiansimclick</string>
+		<string>citispay</string>
+		<string>payco</string>
+		<string>chaipayment</string>
+		<string>kakaotalk</string>
+		<string>kakaokompassauth</string>
+		<string>tosspay</string>
+		<string>supertoss</string>
+		<string>newlivetoss</string>
+		<string>naversearchapp</string>
+		<string>naversearchthirdlogin</string>
+		<string>fbapi</string>
+		<string>fb-messenger-share-api</string>
+		<string>fbauth2</string>
+		<string>fbshareextension</string>
+	</array>
+
+	<!-- Facebook 설정 -->
 	<key>FacebookAppID</key>
 	<string>981820900769627</string>
 	<key>FacebookClientToken</key>
 	<string>324c786f9f340871a3bacea093f4751c</string>
 	<key>FacebookDisplayName</key>
 	<string>farm-management</string>
-	
-	<key>LSApplicationQueriesSchemes</key>
-	<array>
-		<string>fbapi</string>
-		<string>fb-messenger-share-api</string>
-		<string>fbauth2</string>
-		<string>fbshareextension</string>
-	</array>
-	
+
+	<!-- 네이버 로그인 설정 -->
+	<key>NaverThirdPartyLogin</key>
+	<dict>
+		<key>ConsumerKey</key>
+		<string>IMwR6HhF_WSyvR_c0PoS</string>
+		<key>ConsumerSecret</key>
+		<string>4vgitNloaJ</string>
+		<key>ServiceAppName</key>
+		<string>farm-management</string>
+		<key>ServiceAppUrlScheme</key>
+		<string>farm-management</string>
+	</dict>
+
 	<!-- 기존 설정 유지 -->
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
@@ -94,5 +117,13 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	 <!-- 웹뷰 설정 -->
+    <key>io.flutter.embedded_views_preview</key>
+    <true/>
+    <key>NSAppTransportSecurity</key>
+    <dict>
+        <key>NSAllowsArbitraryLoads</key>
+        <true/>
+    </dict>
 </dict>
 </plist>

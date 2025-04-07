@@ -2,7 +2,6 @@ import 'package:flutter/material.dart' hide SizedBox;
 import 'package:flutter/material.dart' show SizedBox;
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 import '../../config/theme.dart';
 import '../../models/product_model.dart';
 import '../../services/product_service.dart';

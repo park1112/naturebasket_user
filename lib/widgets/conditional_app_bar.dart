@@ -92,7 +92,7 @@ class ConditionalAppBar extends StatelessWidget {
       IconButton(
         icon: const Icon(Icons.shopping_cart, color: Colors.white),
         onPressed: () {
-          Get.to(() => const CartScreen());
+          Get.to(() => CartScreen());
         },
       ),
     ];

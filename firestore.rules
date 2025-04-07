@@ -1,0 +1,11 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // 개발 환경에서는 모든 읽기/쓰기를 허용할 수 있지만,
+    // 실제 배포 전에는 보안 규칙을 적절히 수정하세요.
+    match /{document=**} {
+      allow read, write: if true;
+    }
+  }
+}

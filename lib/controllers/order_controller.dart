@@ -28,7 +28,7 @@ class OrderController extends GetxController {
 
   // 주문 목록 로드
   Future<void> loadOrders() async {
-    if (!_authController.isLoggedIn) return;
+    if (!_authController.isLoggedIn.value) return;
     isLoading.value = true;
     try {
       String uid = _authController.firebaseUser.value!.uid;
@@ -59,7 +59,7 @@ class OrderController extends GetxController {
   // 새 주문 생성
   Future<String?> createOrder(DeliveryInfo deliveryInfo,
       {String? paymentMethod, String? notes}) async {
-    if (!_authController.isLoggedIn) {
+    if (!_authController.isLoggedIn.value) {
       Get.snackbar('로그인 필요', '주문하려면 로그인이 필요합니다.');
       return null;
     }

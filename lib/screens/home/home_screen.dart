@@ -73,7 +73,7 @@ class _HomeScreenState extends State<HomeScreen> {
               IconButton(
                 icon: const Icon(Icons.shopping_cart, color: Colors.white),
                 onPressed: () {
-                  Get.to(() => const CartScreen());
+                  Get.to(() => CartScreen());
                 },
               ),
             ],
@@ -92,7 +92,7 @@ class _HomeScreenState extends State<HomeScreen> {
       case 2: // 주문 내역 탭
         return const OrderHistoryScreen();
       case 3: // 장바구니 탭
-        return const CartScreen();
+        return CartScreen();
       case 4: // 프로필 탭
         return const ProfileScreen();
       default:

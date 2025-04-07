@@ -178,31 +178,100 @@ class OrderService {
   }
 
   // 주문 결제 상태 업데이트
-  Future<bool> updatePaymentStatus(String orderId, bool isPaid,
-      {String? transactionId}) async {
+// 주문 결제 상태 업데이트
+  Future<bool> updatePaymentStatus(
+    String orderId,
+    bool isPaid, {
+    String? transactionId,
+    String? paymentMethod,
+    Map<String, dynamic>? paymentDetails,
+  }) async {
     try {
+      // 현재 시간을 Timestamp로 직접 설정
+      final now = Timestamp.fromDate(DateTime.now());
+
+      // 업데이트할 데이터 준비
       Map<String, dynamic> updateData = {
         'isPaid': isPaid,
+        'updatedAt': now,
       };
 
       if (transactionId != null) {
         updateData['transactionId'] = transactionId;
       }
 
-      await _firestore
-          .collection(AppConstants.ordersCollection)
-          .doc(orderId)
-          .update(updateData);
-
-      // 결제 완료 시 상태 업데이트
-      if (isPaid) {
-        await updateOrderStatus(orderId, OrderStatus.confirmed,
-            message: '결제가 완료되었습니다.');
+      if (paymentMethod != null) {
+        updateData['paymentMethod'] = paymentMethod;
       }
+
+      // 결제 상세 정보가 있는 경우 저장
+      if (paymentDetails != null) {
+        updateData['paymentDetails'] = paymentDetails;
+      }
+
+      // 주문 문서 참조
+      final DocumentReference orderRef =
+          _firestore.collection(AppConstants.ordersCollection).doc(orderId);
+
+      // 결제 완료 시 상태 업데이트 추가
+      if (isPaid) {
+        // 기존 주문 정보 가져오기
+        final docSnapshot = await orderRef.get();
+
+        if (docSnapshot.exists) {
+          final data = docSnapshot.data() as Map<String, dynamic>;
+          final List<dynamic> existingUpdates = data['statusUpdates'] ?? [];
+
+          // 결제 수단 정보 텍스트로 변환
+          String paymentMethodText = '결제';
+          if (paymentMethod != null) {
+            switch (paymentMethod) {
+              case 'card':
+                paymentMethodText = '신용카드 결제';
+                break;
+              case 'trans':
+                paymentMethodText = '계좌이체';
+                break;
+              case 'vbank':
+                paymentMethodText = '가상계좌';
+                break;
+              case 'phone':
+                paymentMethodText = '휴대폰 결제';
+                break;
+              case 'kakaopay':
+                paymentMethodText = '카카오페이';
+                break;
+              case 'tosspay':
+                paymentMethodText = '토스페이';
+                break;
+              case 'naverpay':
+                paymentMethodText = '네이버페이';
+                break;
+              default:
+                paymentMethodText = paymentMethod;
+            }
+          }
+
+          // 새 상태 업데이트 추가
+          final statusUpdate = {
+            'status': 'confirmed',
+            'date': now,
+            'message': '$paymentMethodText 완료되었습니다.'
+          };
+          existingUpdates.add(statusUpdate);
+
+          // 주문 상태 및 상태 업데이트 배열 함께 업데이트
+          updateData['status'] = 'confirmed';
+          updateData['statusUpdates'] = existingUpdates;
+        }
+      }
+
+      // Firestore 문서 업데이트
+      await orderRef.update(updateData);
 
       return true;
     } catch (e) {
-      print('주문 결제 상태 업데이트 중 오류: $e');
+      debugPrint('주문 결제 상태 업데이트 중 오류: $e');
       return false;
     }
   }

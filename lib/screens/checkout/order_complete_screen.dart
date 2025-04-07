@@ -7,7 +7,12 @@ import '../home/home_screen.dart';
 import '../../utils/format_helper.dart';
 
 class OrderCompleteScreen extends StatelessWidget {
-  const OrderCompleteScreen({Key? key}) : super(key: key);
+  final String orderId;
+
+  const OrderCompleteScreen({
+    Key? key,
+    required this.orderId,
+  }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {

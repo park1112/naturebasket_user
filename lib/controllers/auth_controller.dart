@@ -29,7 +29,7 @@ class AuthController extends GetxController {
   Rx<UserModel?> userModel = Rx<UserModel?>(null);
 
   // 로그인 상태 확인
-  bool get isLoggedIn => firebaseUser.value != null;
+  RxBool isLoggedIn = false.obs;
 
   // 로딩 상태, 인증 관련 변수들
   RxBool isLoading = false.obs;
@@ -65,6 +65,11 @@ class AuthController extends GetxController {
     firebaseUser.bindStream(_authService.authStateChanges);
     // 인증 상태에 따른 초기 화면 이동 처리
     ever(firebaseUser, _setInitialScreen);
+
+    // 로그인 상태 업데이트
+    ever(firebaseUser, (user) {
+      isLoggedIn.value = user != null;
+    });
 
     // 앱 시작 시 이미 로그인된 경우 로그인 타입 불러오기
     if (_authService.currentUser != null) {

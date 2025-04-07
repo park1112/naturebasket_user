@@ -3,28 +3,36 @@ import '../models/order_model.dart';
 
 // Add this extension to your project (e.g., in utils/order_status_extensions.dart)
 extension OrderStatusExtension on OrderStatus {
-  String get text {
+  String toKorean() {
     switch (this) {
       case OrderStatus.pending:
-        return '주문 접수';
+        return '주문접수';
       case OrderStatus.confirmed:
-        return '결제 완료';
+        return '결제완료';
       case OrderStatus.processing:
-        return '처리 중';
+        return '처리중';
       case OrderStatus.shipping:
-        return '배송 중';
+        return '배송중';
       case OrderStatus.delivered:
-        return '배송 완료';
+        return '배송완료';
       case OrderStatus.cancelled:
-        return '주문 취소';
+        return '주문취소';
       case OrderStatus.refunded:
-        return '환불 완료';
+        return '환불완료';
+      case OrderStatus.returnRequested:
+        return '반품요청';
+      case OrderStatus.exchangeRequested:
+        return '교환요청';
+      case OrderStatus.returnCompleted:
+        return '반품완료';
+      case OrderStatus.exchangeCompleted:
+        return '교환완료';
       default:
-        return '문앞 전달';
+        return '알 수 없음';
     }
   }
 
-  IconData get icon {
+  IconData getIcon() {
     switch (this) {
       case OrderStatus.pending:
         return Icons.receipt_outlined;
@@ -45,7 +53,7 @@ extension OrderStatusExtension on OrderStatus {
     }
   }
 
-  Color get color {
+  Color getColor() {
     switch (this) {
       case OrderStatus.pending:
         return Colors.blue;
@@ -66,7 +74,7 @@ extension OrderStatusExtension on OrderStatus {
     }
   }
 
-  Color get backgroundColor {
+  Color getBackgroundColor() {
     switch (this) {
       case OrderStatus.pending:
         return Colors.blue.shade400;
@@ -122,7 +130,7 @@ enum ExchangeReturnStatus {
 }
 
 extension ExchangeReturnStatusExtension on ExchangeReturnStatus {
-  String get text {
+  String toKorean() {
     switch (this) {
       case ExchangeReturnStatus.pending:
         return '처리 대기';
@@ -138,10 +146,12 @@ extension ExchangeReturnStatusExtension on ExchangeReturnStatus {
         return '거부됨';
       case ExchangeReturnStatus.cancelled:
         return '취소됨';
+      default:
+        return '알 수 없음';
     }
   }
 
-  IconData get icon {
+  IconData getIcon() {
     switch (this) {
       case ExchangeReturnStatus.pending:
         return Icons.hourglass_empty;
@@ -157,10 +167,12 @@ extension ExchangeReturnStatusExtension on ExchangeReturnStatus {
         return Icons.thumb_down_outlined;
       case ExchangeReturnStatus.cancelled:
         return Icons.cancel_outlined;
+      default:
+        return Icons.info_outline;
     }
   }
 
-  Color get color {
+  Color getColor() {
     switch (this) {
       case ExchangeReturnStatus.pending:
         return Colors.orange;
@@ -176,6 +188,29 @@ extension ExchangeReturnStatusExtension on ExchangeReturnStatus {
         return Colors.red;
       case ExchangeReturnStatus.cancelled:
         return Colors.grey;
+      default:
+        return Colors.grey;
+    }
+  }
+
+  Color getBackgroundColor() {
+    switch (this) {
+      case ExchangeReturnStatus.pending:
+        return Colors.orange.shade400;
+      case ExchangeReturnStatus.approved:
+        return Colors.blue.shade400;
+      case ExchangeReturnStatus.processing:
+        return Colors.purple.shade400;
+      case ExchangeReturnStatus.shipped:
+        return Colors.indigo.shade400;
+      case ExchangeReturnStatus.completed:
+        return Colors.green.shade400;
+      case ExchangeReturnStatus.rejected:
+        return Colors.red.shade400;
+      case ExchangeReturnStatus.cancelled:
+        return Colors.grey.shade400;
+      default:
+        return Colors.grey.shade400;
     }
   }
 

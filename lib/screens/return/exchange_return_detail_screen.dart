@@ -281,7 +281,9 @@ class _ExchangeReturnDetailScreenState
     String type = _requestData!['type']; // 'exchange' or 'return'
     String status = _requestData![
         'status']; // 'pending', 'approved', 'rejected', 'completed', 'cancelled'
+
     List<dynamic> items = _requestData!['items'] as List<dynamic>;
+
     DateTime requestDate = (_requestData!['requestDate'] as dynamic).toDate();
 
     // 요청 타입에 따른 텍스트 및 색상 설정
